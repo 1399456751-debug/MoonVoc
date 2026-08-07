@@ -4,7 +4,7 @@
 namespace
 {
     constexpr float kSmoothTime = 0.05f;     // 增益平滑时间（秒）
-    constexpr float kFreqSmoothTime = 0.25f; // 智能频点平滑时间（秒）
+    constexpr float kFreqSmoothTime = 0.5f; // 智能频点平滑时间（秒）：0.25→0.5 减缓频点漂移
 
     // 1/4 倍频程对数间隔候选：200~800Hz（盒声/共振/鼻音区）、2k~8k（刺耳/齿音区）
     constexpr float deboxCandidates[13]   { 200.0f, 224.0f, 250.0f, 280.0f, 315.0f, 355.0f, 400.0f,
@@ -56,7 +56,7 @@ void VoiceEq::SmartBand::prepare(const juce::dsp::ProcessSpec& spec, const float
     }
     std::fill(std::begin(ema), std::end(ema), 0.0f);
     // 检测器能量平均：时间常数 ~50ms，按块更新（blockDur 秒/块，用 OS 采样率）
-    alpha = 1.0f - (float) std::exp(-((double) spec.maximumBlockSize / fs) / 0.05);
+    alpha = 1.0f - (float) std::exp(-((double) spec.maximumBlockSize / fs) / 0.12);
 
     // 3 路并行 peaking：预分配系数 + 每通道 filter 实例
     for (int p = 0; p < kMaxPeaks; ++p)
@@ -92,8 +92,8 @@ void VoiceEq::SmartBand::runDetectors(const juce::dsp::AudioBlock<const float>& 
     auto* det = detectBuffer.getWritePointer(0);
     const auto numSamples = (int) monoBlock.getNumSamples();
 
-    // alpha 按当前块实际时长实时算（OS 倍率热切换后仍保持 ~50ms 收敛）
-    const float alpha = 1.0f - std::exp(-((double) numSamples / fs) / 0.05);
+    // alpha 按当前块实际时长实时算（OS 倍率热切换后仍保持 ~120ms 收敛）
+    const float alpha = 1.0f - std::exp(-((double) numSamples / fs) / 0.12);
 
     // 检测带通系数每块按当前 OS 率重写（热切换后频率仍正确）
     for (int i = 0; i < 13; ++i)
@@ -113,7 +113,7 @@ void VoiceEq::SmartBand::runDetectors(const juce::dsp::AudioBlock<const float>& 
 
 void VoiceEq::SmartBand::detect(const float* cands)
 {
-    // 底噪检查：无信号 → 全直通
+    // 底噪检查：无信号 → 全直通 + 解锁
     float maxEma = 0.0f;
     for (int i = 2; i <= 10; ++i)
         maxEma = jmax(maxEma, ema[i]);
@@ -121,10 +121,12 @@ void VoiceEq::SmartBand::detect(const float* cands)
     {
         for (int p = 0; p < kMaxPeaks; ++p)
             active[p] = false;
+        lockedIndex = -1;
+        unlockTimer = 0;
         return;
     }
 
-    // 候选峰：局部最大 + 对比度超阈值（只评估 2..10，边缘邻域不足）
+    // 候选峰：局部最大 + 对比度超阈值
     struct Peak { int index; float contrast; };
     Peak peaks[13];
     int numPeaks = 0;
@@ -151,36 +153,78 @@ void VoiceEq::SmartBand::detect(const float* cands)
         peaks[b + 1] = key;
     }
 
-    // 取前 kMaxPeaks 个，去重（间距 < kPeakSpacing 的跳过）
-    int picked = 0;
+    // ---- 峰锁定：锁定峰（若仍强）强制占 active[0]，仅邻域滑动 ----
+    bool lockHeld = false;
+    int pickedIdx[kMaxPeaks] { -1, -1, -1 };
+    if (lockedIndex >= 0)
+    {
+        int li = lockedIndex;
+        float le = ema[li];
+        for (int i = jmax(2, lockedIndex - 1); i <= jmin(10, lockedIndex + 1); ++i)
+            if (ema[i] > le) { le = ema[i]; li = i; }
+
+        if (le >= lockedBaseline * 0.5f)   // 未衰减 >6dB → 保持锁定
+        {
+            unlockTimer = 0;
+            lockedIndex = li;              // 允许 ±1 带内滑动
+            lockedBaseline = le;           // 滚动基线
+            // 邻域抛物线插值（不超出 ±1 带，杜绝跳变）
+            const float l = std::log(ema[li - 1]), c = std::log(ema[li]), r = std::log(ema[li + 1]);
+            const float denom = l - 2.0f * c + r;
+            float d = (denom > 1.0e-9f) ? 0.5f * (l - r) / denom : 0.0f;
+            d = jlimit(-0.5f, 0.5f, d);
+            targetFreq[0] = cands[li] * std::exp(d * std::log(cands[li + 1] / cands[li]));
+            targetQ[0] = 0.9f;                                   // 锁定期 Q 温和固定
+            targetContrast[0] = le / ((ema[li - 1] + ema[li + 1]) * 0.5f + 1.0e-12f);
+            active[0] = true;
+            pickedIdx[0] = li;
+            lockHeld = true;
+        }
+        else if (++unlockTimer < 8)
+        {
+            return;                        // 确认期内保持上一帧输出，频点不跳
+        }
+        else
+        {
+            lockedIndex = -1;              // 衰减确认 → 解锁，重新全局检测
+            unlockTimer = 0;
+        }
+    }
+
+    // ---- 填充其余路：候选峰按对比度选，间距去重（含锁定峰） ----
+    int picked = lockHeld ? 1 : 0;
     for (int a = 0; a < numPeaks && picked < kMaxPeaks; ++a)
     {
+        const int i = peaks[a].index;
         bool tooClose = false;
         for (int p = 0; p < picked; ++p)
-        {
-            const int idx = (int) peaks[a].index;
-            const int prevIdx = (int) peaks[p].index;
-            if (std::abs(idx - prevIdx) < kPeakSpacing)
+            if (std::abs(i - pickedIdx[p]) < kPeakSpacing)
             {
                 tooClose = true;
                 break;
             }
-        }
         if (tooClose)
             continue;
 
-        const int i = peaks[a].index;
-        // 对数域抛物线插值：精确定位峰值（不限于候选点）
-        const float l = std::log(ema[i - 1]);
-        const float c = std::log(ema[i]);
-        const float r = std::log(ema[i + 1]);
+        // 对数域抛物线插值精确定位
+        const float l = std::log(ema[i - 1]), c = std::log(ema[i]), r = std::log(ema[i + 1]);
         const float denom = l - 2.0f * c + r;
         float d = (denom > 1.0e-9f) ? 0.5f * (l - r) / denom : 0.0f;
         d = jlimit(-0.5f, 0.5f, d);
         targetFreq[picked] = cands[i] * std::exp(d * std::log(cands[i + 1] / cands[i]));
         targetQ[picked] = juce::jmap(peaks[a].contrast, kResonanceThreshold, 5.0f, kQMin, kQMax);
+        targetContrast[picked] = peaks[a].contrast;
         active[picked] = true;
+        pickedIdx[picked] = i;
         ++picked;
+    }
+
+    // 未锁定时：把对比度最高的候选峰设为新锁定峰
+    if (! lockHeld && picked > 0)
+    {
+        lockedIndex = pickedIdx[0];
+        lockedBaseline = ema[lockedIndex];
+        unlockTimer = 0;
     }
 
     // 未使用的路 → 直通
@@ -201,7 +245,10 @@ void VoiceEq::SmartBand::updateCoeffs(int numSamples, float gainDb, double fs)
         }
         const float freq = freqSmooth[p].skip(numSamples);
         const float q = qSmooth[p].skip(numSamples);
-        VoiceEq::writePeak(coeffs[p]->getRawCoefficients(), fs, freq, q, gainDb);
+        // 限增益：刺耳峰少提升；削减（负增益）不受限（共振越扎眼越该削）
+        const float cap = 1.0f - 0.5f * jlimit(0.0f, 1.0f, (targetContrast[p] - kResonanceThreshold) / 3.0f);
+        const float g = gainDb > 0.0f ? gainDb * cap : gainDb;
+        VoiceEq::writePeak(coeffs[p]->getRawCoefficients(), fs, freq, q, g);
     }
 }
 

@@ -49,6 +49,11 @@ private:
         float targetQ[3] { 0.9f, 0.9f, 0.9f };
         bool active[3] { false, false, false };
         float defaultFreq = 400.0f;
+        // 峰锁定状态（消除频点扫动；-1=未锁定）
+        int lockedIndex = -1;
+        float lockedBaseline = 0.0f;
+        int unlockTimer = 0;
+        float targetContrast[3] { 0.0f, 0.0f, 0.0f }; // 各峰对比度（限增益用）
         const float* candidates = nullptr; // 候选频率（系数重写用）
     };
 

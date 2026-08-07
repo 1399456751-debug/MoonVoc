@@ -625,6 +625,75 @@ int main()
                   ? "OK" : "BAD");
     }
 
+    // Clarity 峰锁定检查：f1=3150 恒定强、f2=2500 周期性增强 → 锁定应保持 f1，不来回跳
+    {
+        processor.prepareToPlay(48000.0, 512);
+        const auto& apvts = processor.apvts;
+        for (auto id : { "eqLowBoost", "eqDeboxCut", "eqClarityBoost", "eqAirBoost", "eqAirFreq",
+                         "compAmount", "compMakeup", "compMode",
+                         "dsLowAmount", "dsHighAmount",
+                         "satTypeA", "satAmountA", "satTypeB", "satAmountB",
+                         "edgeAmount",
+                         "inputGain", "outputGain", "headroom", "oversampling" })
+            *apvts.getRawParameterValue(id) = 0.0f;
+        *apvts.getRawParameterValue("eqClarityBoost") = 6.0f;
+
+        juce::AudioBuffer<float> buf(2, 512);
+        juce::MidiBuffer midi;
+        for (int b = 0; b < 3000; ++b)
+        {
+            const float f2Amp = (b % 400 < 200) ? 0.32f : 0.03f; // f2 周期性增强
+            for (int c = 0; c < 2; ++c)
+                for (int n = 0; n < 512; ++n)
+                {
+                    const float t = (float) (b * 512 + n) / 48000.0f;
+                    buf.setSample(c, n, 0.30f * std::sin(2.0f * 3.14159f * 3150.0f * t)
+                                       + f2Amp * std::sin(2.0f * 3.14159f * 2500.0f * t));
+                }
+            processor.processBlock(buf, midi);
+        }
+        const float locked = processor.getEqClarityFreq(0);
+        TRACE("clarity lock check: locked=%d Hz (expect ~3150) %s\n",
+              (int) locked, std::abs(locked - 3150.0f) < 250.0f ? "OK" : "BAD");
+    }
+
+    // Clarity 限增益检查：单一强共振（高对比度）→ 实际提升显著低于用户 +12dB
+    {
+        processor.prepareToPlay(48000.0, 512);
+        const auto& apvts = processor.apvts;
+        for (auto id : { "eqLowBoost", "eqDeboxCut", "eqClarityBoost", "eqAirBoost", "eqAirFreq",
+                         "compAmount", "compMakeup", "compMode",
+                         "dsLowAmount", "dsHighAmount",
+                         "satTypeA", "satAmountA", "satTypeB", "satAmountB",
+                         "edgeAmount",
+                         "inputGain", "outputGain", "headroom", "oversampling" })
+            *apvts.getRawParameterValue(id) = 0.0f;
+        *apvts.getRawParameterValue("eqClarityBoost") = 12.0f;
+
+        juce::AudioBuffer<float> buf(2, 512);
+        juce::MidiBuffer midi;
+        const int warmup = 400, measure = 2000;   // warmup 足够让检测器锁定共振峰
+        double outSq = 0.0;
+        for (int b = 0; b < warmup + measure; ++b)
+        {
+            for (int c = 0; c < 2; ++c)
+                for (int n = 0; n < 512; ++n)
+                {
+                    const float t = (float) (b * 512 + n) / 48000.0f;
+                    buf.setSample(c, n, 0.25f * std::sin(2.0f * 3.14159f * 3150.0f * t));
+                }
+            processor.processBlock(buf, midi);
+            if (b >= warmup)
+                for (int c = 0; c < 2; ++c)
+                    for (int n = 0; n < 512; ++n)
+                        outSq += (double) buf.getSample(c, n) * buf.getSample(c, n);
+        }
+        const float ratio = (float) std::sqrt(outSq / (2.0 * measure * 512.0)) / (0.25f * 0.7071f);
+        const float gainDb = 20.0f * std::log10(ratio);
+        TRACE("clarity cap check: gain=%.1f dB (expect < 10, > 2) %s\n",
+              gainDb, gainDb < 10.0f && gainDb > 2.0f ? "OK" : "BAD");
+    }
+
     // 系数公式对比：手写 writeShelf/writePeak/writeBandPass vs JUCE makeXXX 逐样本一致
     {
         using Filter = juce::dsp::IIR::Filter<float>;
