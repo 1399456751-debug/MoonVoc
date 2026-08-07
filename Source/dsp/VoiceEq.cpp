@@ -55,7 +55,14 @@ void VoiceEq::SmartBand::prepare(const juce::dsp::ProcessSpec& spec, const float
         detectors[i].coefficients = detectCoeffs[i];
     }
     std::fill(std::begin(ema), std::end(ema), 0.0f);
-    // 检测器能量平均：时间常数 ~50ms，按块更新（blockDur 秒/块，用 OS 采样率）
+    // 清峰锁定状态与活跃标记：prepare 每次 transport/OS 热切换重启都执行
+    // （reset() 在本插件运行路径上无调用方，清理必须落在这里才生效）
+    lockedIndex = -1;
+    lockedBaseline = 0.0f;
+    unlockTimer = 0;
+    std::fill(std::begin(targetContrast), std::end(targetContrast), 0.0f);
+    std::fill(std::begin(active), std::end(active), false);
+    // 检测器能量平均：时间常数 ~120ms，按块更新（blockDur 秒/块，用 OS 采样率）
     alpha = 1.0f - (float) std::exp(-((double) spec.maximumBlockSize / fs) / 0.12);
 
     // 3 路并行 peaking：预分配系数 + 每通道 filter 实例
