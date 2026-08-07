@@ -43,7 +43,7 @@ AP::ParameterLayout MoonVocProcessor::createParameterLayout()
     p.push_back(std::make_unique<Param>(ParamID::eqClarityBoost, "Clarity (auto)", -12.0f, 12.0f, 0.0f));
     p.push_back(std::make_unique<Param>(ParamID::eqAirBoost, "Air (bright)", 0.0f, 12.0f, 0.0f));
     p.push_back(std::make_unique<Choice>(ParamID::eqAirFreq, "Air Freq",
-        juce::StringArray{ "13 kHz", "22 kHz" }, 0));
+        juce::StringArray{ "16 kHz", "22 kHz" }, 0));
 
     // 压缩
     p.push_back(std::make_unique<Choice>(ParamID::compMode, "Style",

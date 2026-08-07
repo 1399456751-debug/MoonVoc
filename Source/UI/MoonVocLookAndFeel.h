@@ -49,9 +49,9 @@ namespace Theme
                              const juce::Font& font, juce::Colour col, juce::Justification j)
     {
         g.setFont(font);
-        const float offs[5]   { 3.2f, 2.4f, 1.7f, 1.1f, 0.6f };
-        const float alphas[5] { 0.05f, 0.09f, 0.15f, 0.24f, 0.36f };
-        for (int i = 0; i < 5; ++i)
+        const float offs[3]   { 1.6f, 0.9f, 0.4f };
+        const float alphas[3] { 0.08f, 0.16f, 0.30f };
+        for (int i = 0; i < 3; ++i)
         {
             g.setColour(col.withAlpha(alphas[i]));
             g.drawText(text, r.translated(offs[i], offs[i]), j);

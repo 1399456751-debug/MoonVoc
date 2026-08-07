@@ -60,12 +60,12 @@ void MoonVocLookAndFeel::drawRotarySlider(juce::Graphics& g, int x, int y, int w
                              : (a <= zeroAngle && a >= valueAngle);
         if (lit)
         {
-            g.setColour(Theme::accent.withAlpha(0.30f));
+            g.setColour(Theme::accent.withAlpha(0.15f));
             g.drawLine(centre.x + (tickR0 - 1.5f) * std::cos(a), centre.y + (tickR0 - 1.5f) * std::sin(a),
-                       centre.x + (tickR1 + 1.5f) * std::cos(a), centre.y + (tickR1 + 1.5f) * std::sin(a), 3.0f);
-            g.setColour(Theme::accentHi.withAlpha(0.9f));
+                       centre.x + (tickR1 + 1.5f) * std::cos(a), centre.y + (tickR1 + 1.5f) * std::sin(a), 2.0f);
+            g.setColour(Theme::accentHi.withAlpha(0.6f));
             g.drawLine(centre.x + tickR0 * std::cos(a), centre.y + tickR0 * std::sin(a),
-                       centre.x + tickR1 * std::cos(a), centre.y + tickR1 * std::sin(a), 1.4f);
+                       centre.x + tickR1 * std::cos(a), centre.y + tickR1 * std::sin(a), 1.2f);
         }
         else
         {
@@ -80,7 +80,7 @@ void MoonVocLookAndFeel::drawRotarySlider(juce::Graphics& g, int x, int y, int w
         const float pr = (tickR0 + tickR1) * 0.5f;
         const juce::Point<float> ep { centre.x + pr * std::cos(valueAngle),
                                       centre.y + pr * std::sin(valueAngle) };
-        g.setColour(Theme::accent.withAlpha(0.40f));
+        g.setColour(Theme::accent.withAlpha(0.25f));
         g.fillEllipse(ep.x - 5.5f, ep.y - 5.5f, 11.0f, 11.0f);
         g.setColour(juce::Colours::white.withAlpha(0.95f));
         g.fillEllipse(ep.x - 1.6f, ep.y - 1.6f, 3.2f, 3.2f);
@@ -130,10 +130,10 @@ void MoonVocLookAndFeel::drawRotarySlider(juce::Graphics& g, int x, int y, int w
     const float ptrR = tickR0;
     const juce::Point<float> ptrEnd { centre.x + ptrR * std::cos(valueAngle),
                                       centre.y + ptrR * std::sin(valueAngle) };
-    g.setColour(Theme::accent.withAlpha(0.5f));
-    g.drawLine(centre.x, centre.y, ptrEnd.x, ptrEnd.y, 3.0f);
+    g.setColour(Theme::accent.withAlpha(0.35f));
+    g.drawLine(centre.x, centre.y, ptrEnd.x, ptrEnd.y, 2.0f);
     g.setColour(Theme::accentHi);
-    g.drawLine(centre.x, centre.y, ptrEnd.x, ptrEnd.y, 1.6f);
+    g.drawLine(centre.x, centre.y, ptrEnd.x, ptrEnd.y, 1.3f);
 
     // 悬停/拖动光圈（外扩发光，随值脉冲）
     if (slider.isMouseOverOrDragging())

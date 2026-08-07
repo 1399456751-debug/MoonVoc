@@ -6,7 +6,7 @@
 //   段1 Thick 智能基频搁架 ±12dB  —— 加厚/削低频（自动锁基频）
 //   段2 智能凹陷 200~800Hz ±12dB  —— 去盒子音，同时削减 2-3 个共振峰
 //   段3 智能提升 2k~8kHz ±12dB    —— 清晰度，同时提升 2 个峰
-//   段4 高频搁架 13k/22k 0~+12dB  —— 空气感
+//   段4 高频搁架 16k/22k 0~+12dB  —— 空气感
 // 多峰检测：13 窄带（1/4 倍频程）对比度找局部峰，对数插值精确定位，无峰路直通
 // 系数零分配：预分配 Coefficients 成员，每块原地重写 raw 数组
 class VoiceEq final
@@ -81,7 +81,7 @@ private:
     float thickTargetFreq = 120.0f;
     juce::SmoothedValue<float> thickFreqSmooth;
 
-    float airTargetFreq = 13000.0f;
+    float airTargetFreq = 16000.0f;
     juce::SmoothedValue<float> airFreqSmooth;
 
     // 主滤波器（串行：低搁架 → 凹陷 → 提升 → 空气搁架），每通道一份手动实例

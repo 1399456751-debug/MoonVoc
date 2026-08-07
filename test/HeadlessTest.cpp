@@ -812,7 +812,7 @@ int main()
         struct Check { const char* param; float freq; };
         const Check checks[] {
             { "eqLowBoost", 100.0f }, { "eqDeboxCut", 400.0f },
-            { "eqClarityBoost", 3000.0f }, { "eqAirBoost", 13000.0f },
+            { "eqClarityBoost", 3000.0f }, { "eqAirBoost", 16000.0f },
         };
         for (auto& chk : checks)
         {

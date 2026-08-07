@@ -16,7 +16,7 @@ namespace ParamID
     inline const juce::String eqDeboxCut    { "eqDeboxCut" };     // 去盒子音 ±6dB（智能频点）
     inline const juce::String eqClarityBoost{ "eqClarityBoost" }; // 清晰度 0~+6dB（智能频点）
     inline const juce::String eqAirBoost    { "eqAirBoost" };     // 空气感 0~+6dB
-    inline const juce::String eqAirFreq     { "eqAirFreq" };      // 13k / 22k
+    inline const juce::String eqAirFreq     { "eqAirFreq" };      // 16k / 22k
 
     // 压缩（双模式）
     inline const juce::String compMode     { "compMode" };   // Pop / Rap

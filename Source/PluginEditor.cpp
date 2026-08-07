@@ -74,7 +74,7 @@ MoonVocEditor::MoonVocEditor(MoonVocProcessor& p)
     thickFreqLabel.setColour(juce::Label::textColourId, Theme::accent);
     thickFreqLabel.setFont(10.0f);
     addAndMakeVisible(thickFreqLabel);
-    setupCombo(airFreqBox, { "13 kHz", "22 kHz" });
+    setupCombo(airFreqBox, { "16 kHz", "22 kHz" });
 
     // 压缩
     setupCombo(compModeBox, { "Pop", "Rap" });
@@ -483,7 +483,7 @@ void MoonVocEditor::paint(juce::Graphics& g)
         g.setColour(juce::Colours::white.withAlpha(0.05f));
         g.drawHorizontalLine(r.getY() + 1, (float) (r.getX() + 8), (float) (r.getRight() - 8));
         // 发光描边（外层微光 + 内层细边）
-        g.setColour(Theme::accent.withAlpha(0.16f));
+        g.setColour(Theme::accent.withAlpha(0.09f));
         g.drawRoundedRectangle(rf.expanded(1.0f), 7.0f, 1.4f);
         g.setColour(Theme::panelEdge.withAlpha(0.6f));
         g.drawRoundedRectangle(rf, 6.0f, 1.0f);

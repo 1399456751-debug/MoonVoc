@@ -60,7 +60,7 @@ moonvoc/
 | 模块 | 文件 | 算法 | 关键参数 |
 |---|---|---|---|
 | 去齿音 | VoiceDeEsser | 双频段（3-5k/5k+），候选窄带锁频（3 档），齿音特征=带通包络 vs 全带包络的相对值（阈值 -25dB），动态 peaking 削减（Q=2，最大 -24dB×强度） | dsLowAmount/dsHighAmount |
-| EQ | VoiceEq | 四段：Thick（智能基频 80~315Hz 锁频，搁架中心=基频×1.25）+ De-Box（13 窄带 200~800Hz 多峰检测，最多 3 峰并行削减）+ Clarity（13 窄带 2k~8k 多峰提升，**峰锁定消除频点扫动 + 刺耳峰限增益**）+ Air（13k/22k 搁架）。对比度>2.0 锁频，抛物线插值，Q 自适应 0.9~3.5 | eqLowBoost/eqDeboxCut/eqClarityBoost/eqAirBoost/eqAirFreq |
+| EQ | VoiceEq | 四段：Thick（智能基频 80~315Hz 锁频，搁架中心=基频×1.25）+ De-Box（13 窄带 200~800Hz 多峰检测，最多 3 峰并行削减）+ Clarity（13 窄带 2k~8k 多峰提升，**峰锁定消除频点扫动 + 刺耳峰限增益**）+ Air（16k/22k 搁架，v0.2 默认 16k 更顺滑；Q 0.5 缓坡，8k~14k 平滑爬升）。对比度>2.0 锁频，抛物线插值，Q 自适应 0.9~3.5 | eqLowBoost/eqDeboxCut/eqClarityBoost/eqAirBoost/eqAirFreq |
 | 压缩 | VoiceComp | 双层串联：Fast（1176 风：快 attack 高 ratio 硬拐点，阈值 -30dB×强度）+ Smooth（LA-2A 风：慢 attack 2:1 软拐点 knee 6dB，阈值 -40dB×强度）。attack/release/ratio 由峰值因子（crest，1s EMA）智能自适应（瞬态→0.15ms/6:1，平滑→3ms/3.5:1）。参数 30ms 平滑防 click | compMode/compAmount/compMakeup |
 | 染色 | VoiceSat | 6 种饱和（FET/Tube/Tape/Optical/Germanium），小信号斜率精确 1:1（干净），大信号软压缩；A+B 双槽串联；amount 用 gamma 0.7 | satTypeA/B/satAmountA/B |
 | 瞬态 | VoiceEdge | 包络跟随（attack 1ms/release 50ms），瞬态强度=(输入-包络)/输入，增益平滑 1.5ms 降调制失真（THD -83dB）；±100 双向 | edgeAmount |
@@ -120,7 +120,7 @@ moonvoc/
 - 默认直通 THD：**-92.0dB** ✓（FIR 超采样后比 v0.1 的 -89.5dB 更低）；压缩 100%：-117.2dB；Edge ±100：-76.9/-75.5dB；去齿音 100%：-92.0dB；饱和 FET/Tube：-48.4/-53.3dB（设计染色）
 - 压缩：GR -25.1dB（100%）；智能参数：正弦→2.64ms/3.8:1，脉冲→0.79ms/5.4:1 ✓
 - 去齿音：4k 削 -31.9dB / 1k 仅 -0.5dB（零染色）✓
-- EQ 频响：100Hz +4.2 / 400Hz +3.4 / 3kHz +5.7 / 13kHz +3.0 ✓；Clarity 锁定 593/3150、Air 锁定 593/5934；双共振同时锁 315+560 削减 ✓
+- EQ 频响：100Hz +4.2 / 400Hz +3.4 / 3kHz +5.7 / 16kHz +3.0 ✓；Clarity 锁定 593/3150、Air 锁定 593/5934；双共振同时锁 315+560 削减 ✓
 - **bypass 全链直通：maxErr=0.00（逐样本完全一致）✓**
 - **flat16 频响（16x 超采样平坦度）：100/400/1k/4k/8k/15k Hz 全频段 ±0.10dB ✓**
 - **Clarity 峰锁定：锁定后最差偏移 0Hz（<250）✓；刺耳峰限增益 6.3dB（2~10 区间）✓**
