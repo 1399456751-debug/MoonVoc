@@ -692,6 +692,43 @@ int main()
                   ? "OK" : "BAD");
     }
 
+    // 工作电平指示灯输入参考检查：压缩重度压下输出时，inputLevelDb 必须保持不动
+    {
+        processor.prepareToPlay(48000.0, 512);
+        const auto& apvts = processor.apvts;
+        for (auto id : { "eqLowBoost", "eqDeboxCut", "eqClarityBoost", "eqAirBoost", "eqAirFreq",
+                         "compAmount", "compMakeup", "compMode",
+                         "dsLowAmount", "dsHighAmount",
+                         "satTypeA", "satAmountA", "satTypeB", "satAmountB",
+                         "edgeAmount",
+                         "inputGain", "outputGain", "headroom", "oversampling" })
+            *apvts.getRawParameterValue(id) = 0.0f;
+
+        auto run = [&](float compAmount) -> std::pair<float, float>
+        {
+            *apvts.getRawParameterValue("compAmount") = compAmount;
+            juce::AudioBuffer<float> buf(2, 512);
+            juce::MidiBuffer midi;
+            for (int b = 0; b < 800; ++b)
+            {
+                for (int c = 0; c < 2; ++c)
+                    for (int n = 0; n < 512; ++n)
+                        buf.setSample(c, n, 0.25f * std::sin(2.0f * 3.14159f * 468.75f * (float) (b * 512 + n) / 48000.0f));
+                processor.processBlock(buf, midi);
+            }
+            return { processor.inputLevelDb.load(), processor.outputLevelDb.load() };
+        };
+
+        const auto [in0, out0] = run(0.0f);
+        const auto [in1, out1] = run(100.0f);
+        const bool inOk  = std::abs(in1 - in0) < 1.5f;   // 压缩不改变输入参考
+        const bool outOk = out1 < in1 - 3.0f;            // 输出确实被压下去了
+        TRACE("indicator ref check: comp0 in=%.1f out=%.1f | comp100 in=%.1f out=%.1f %s%s\n",
+              in0, out0, in1, out1, inOk ? "in-OK" : "in-BAD", outOk ? " out-OK" : " out-BAD");
+        if (! (inOk && outOk))
+            return 1;
+    }
+
     // Clarity 峰锁定检查：f1=3150 恒定强、f2=2500 周期性增强 → 锁定应保持 f1，不来回跳
     {
         processor.prepareToPlay(48000.0, 512);

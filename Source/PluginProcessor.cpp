@@ -144,23 +144,6 @@ void MoonVocProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::Midi
 
     juce::dsp::AudioBlock<float> block(buffer);
 
-    // 输入电平（处理前采样，RMS）
-    {
-        const int chs = jmin(2, buffer.getNumChannels());
-        double inSq = 0.0;
-        for (int ch = 0; ch < chs; ++ch)
-        {
-            const float* d = buffer.getReadPointer(ch);
-            for (int n = 0; n < buffer.getNumSamples(); ++n)
-                inSq += (double) d[n] * d[n];
-        }
-        const double rms = std::sqrt(inSq / (double) jmax(1, chs * buffer.getNumSamples()));
-        const float db = 20.0f * std::log10((float) rms + 1.0e-9f);
-        const float k = db > inLvlSmooth ? lvlAttack : lvlRelease;
-        inLvlSmooth += k * (jmax(-60.0f, db) - inLvlSmooth);
-        inputLevelDb.store(inLvlSmooth);
-    }
-
     inputGain.setGainDecibels(apvts.getRawParameterValue(ParamID::inputGain)->load());
     headroomGain.setGainDecibels(apvts.getRawParameterValue(ParamID::headroom)->load());
     outputGain.setGainDecibels(apvts.getRawParameterValue(ParamID::outputGain)->load());
@@ -185,6 +168,24 @@ void MoonVocProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::Midi
 
     // 链路：In → Headroom → [DeEss→EQ→Comp→Sat→Edge（可超采样）] → Out
     inputGain.process(juce::dsp::ProcessContextReplacing<float>(block));
+
+    // 输入电平（Input 增益后、处理链前，RMS）：工作电平指示灯参考，压缩等处理不影响它
+    {
+        const int chs = jmin(2, buffer.getNumChannels());
+        double inSq = 0.0;
+        for (int ch = 0; ch < chs; ++ch)
+        {
+            const float* d = buffer.getReadPointer(ch);
+            for (int n = 0; n < buffer.getNumSamples(); ++n)
+                inSq += (double) d[n] * d[n];
+        }
+        const double rms = std::sqrt(inSq / (double) jmax(1, chs * buffer.getNumSamples()));
+        const float db = 20.0f * std::log10((float) rms + 1.0e-9f);
+        const float k = db > inLvlSmooth ? lvlAttack : lvlRelease;
+        inLvlSmooth += k * (jmax(-60.0f, db) - inLvlSmooth);
+        inputLevelDb.store(inLvlSmooth);
+    }
+
     headroomGain.process(juce::dsp::ProcessContextReplacing<float>(block));
 
     if (currentOsIndex.load() == 0)

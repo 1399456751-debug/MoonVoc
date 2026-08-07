@@ -69,6 +69,7 @@ moonvoc/
 
 **输出电平表**：Processor 每块算输入/输出 RMS → VU 平滑（attack 10ms/release 300ms）→ atomic。
 **GR 表**：压缩 gainReduction + 去齿音 gainReduction（双频段削减和）。
+**上帝粒子指示灯**（菱形，Output 右侧）：只监测**输入电平**——在 Input 增益后、处理链前测 RMS，压缩/EQ/染色等处理把音量压下去不影响它，作混音前的工作电平参考（偏低熄灭/完美紫闪/过高爆红，-18dB~-6dB 区间）。
 
 ## 5. UI 结构（PluginEditor）
 

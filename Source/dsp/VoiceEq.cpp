@@ -271,7 +271,7 @@ void VoiceEq::prepare(const juce::dsp::ProcessSpec& spec)
 
     // 一次性创建系数对象（makeXXX 自带系数数组，之后只重写 raw 数组内容，零分配）
     lowShelfCoeffs  = Coeffs::makeLowShelf (fs, 120.0, 0.71, 1.0f);
-    airCoeffs       = Coeffs::makeHighShelf (fs, 16000.0, 0.5, 1.0f);  // Q 0.5 坡度更缓
+    airCoeffs       = Coeffs::makeHighShelf (fs, 16000.0, 0.33333f, 1.0f);  // Q 1/3 坡度更缓
 
     // 每通道建一个 filter 实例，共享同一份系数（prepare 内分配，RT 安全）
     auto buildFilters = [&spec](std::vector<Filter>& v, const Coeffs::Ptr& c)
@@ -451,7 +451,7 @@ void VoiceEq::updateCoefficients(int numSamples)
     writeShelf(lowShelfCoeffs->getRawCoefficients(), fs, thickFreq, 0.71, boostGain, true);
     deboxBand.updateCoeffs(numSamples, deboxGain, fs);
     clarityBand.updateCoeffs(numSamples, clarityGain, fs);
-    writeShelf(airCoeffs->getRawCoefficients(), fs, airFreq, 0.5, airGain, false);
+    writeShelf(airCoeffs->getRawCoefficients(), fs, airFreq, 0.33333f, airGain, false);
 }
 
 void VoiceEq::debugGetCoeffs(int type, float f, float q, float gainDb, float fs, float out[5])

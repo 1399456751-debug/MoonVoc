@@ -308,18 +308,18 @@ void MoonVocEditor::paintGrBar(juce::Graphics& g, juce::Rectangle<int> r, float 
                         juce::Justification::centredLeft);
 }
 
-// 上帝粒子指示灯：偏低熄灭 / 完美闪烁 / 过高爆红
+// 上帝粒子指示灯：只监测输入电平（Input 增益后、处理链前，压缩等操作不影响它）；偏低熄灭 / 完美闪烁 / 过高爆红
 void MoonVocEditor::paintIndicator(juce::Graphics& g, juce::Rectangle<int> r)
 {
-    const float outDb = processorRef.outputLevelDb.load();
+    const float inDb = processorRef.inputLevelDb.load();
     juce::Colour col;
     float alpha = 1.0f;
 
-    if (outDb > -6.0f)
+    if (inDb > -6.0f)
     {
         col = Theme::danger;                             // 过高：爆红
     }
-    else if (outDb > -18.0f)
+    else if (inDb > -18.0f)
     {
         col = Theme::accentHi;                           // 完美：紫色闪烁
         alpha = 0.5f + 0.5f * (0.5f + 0.5f * std::sin(indicatorPhase));
