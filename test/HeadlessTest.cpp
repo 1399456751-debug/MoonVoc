@@ -506,6 +506,40 @@ int main()
         TRACE("mono check: %s\n", ok ? "OK" : "BAD");
     }
 
+    // 默认全 0 严格直通：oversampling=0 时输出必须逐样本等于输入（float 精度内）
+    {
+        processor.prepareToPlay(48000.0, 512);
+        const auto& apvts = processor.apvts;
+        for (auto id : { "eqLowBoost", "eqDeboxCut", "eqClarityBoost", "eqAirBoost", "eqAirFreq",
+                         "compAmount", "compMakeup", "compMode",
+                         "dsLowAmount", "dsHighAmount",
+                         "satTypeA", "satAmountA", "satTypeB", "satAmountB",
+                         "edgeAmount",
+                         "inputGain", "outputGain", "headroom", "oversampling" })
+            *apvts.getRawParameterValue(id) = 0.0f;
+
+        juce::AudioBuffer<float> ref(2, 512), buf(2, 512);
+        juce::MidiBuffer midi;
+        // 多样化信号：正弦 + 噪声 + 稀疏脉冲
+        for (int c = 0; c < 2; ++c)
+            for (int n = 0; n < 512; ++n)
+                ref.setSample(c, n, 0.3f * std::sin(2.0f * 3.14159f * 937.5f * (float) n / 48000.0f)
+                                   + 0.05f * (rng.nextFloat() * 2.0f - 1.0f)
+                                   + (n < 8 ? 0.4f : 0.0f));
+
+        float maxErr = 0.0f;
+        for (int b = 0; b < 50; ++b)
+        {
+            for (int c = 0; c < 2; ++c)         // JUCE9 API：逐通道复制，每块从 ref 重置，隔离链内部状态
+                buf.copyFrom(c, 0, ref, c, 0, 512);
+            processor.processBlock(buf, midi);
+            for (int c = 0; c < 2; ++c)
+                for (int n = 0; n < 512; ++n)
+                    maxErr = jmax(maxErr, std::abs(buf.getSample(c, n) - ref.getSample(c, n)));
+        }
+        TRACE("bypass check: maxErr=%.2e %s\n", maxErr, maxErr < 1.0e-6f ? "OK" : "BAD");
+    }
+
     // 保真度检查：全默认参数应为透明直通（RMS 一致 + THD 极低）；逐模块开启定位失真源
     {
         processor.prepareToPlay(48000.0, 512);
