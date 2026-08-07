@@ -49,6 +49,37 @@ static float bandGainRatio(MoonVocProcessor& p, const juce::String& paramId, flo
     return (float) (rms / inRms);
 }
 
+// 默认全 0 参数下测某频率 RMS 比值（频响平直 / 直通验证；oversampling 由调用方设置）
+static float defaultRatio(MoonVocProcessor& p, float freq)
+{
+    const auto& apvts = p.apvts;
+    for (auto id : { "eqLowBoost", "eqDeboxCut", "eqClarityBoost", "eqAirBoost", "eqAirFreq",
+                     "compAmount", "compMakeup", "compMode",
+                     "dsLowAmount", "dsHighAmount",
+                     "satTypeA", "satAmountA", "satTypeB", "satAmountB",
+                     "edgeAmount",
+                     "inputGain", "outputGain", "headroom" })
+        *apvts.getRawParameterValue(id) = 0.0f;
+
+    juce::AudioBuffer<float> buf(2, 512);
+    juce::MidiBuffer midi;
+    const int warmup = 200, measure = 2000;
+    double outSq = 0.0;
+    for (int b = 0; b < warmup + measure; ++b)
+    {
+        for (int c = 0; c < 2; ++c)
+            for (int n = 0; n < 512; ++n)
+                buf.setSample(c, n, 0.25f * std::sin(2.0f * 3.14159f * freq * (float) (b * 512 + n) / 48000.0f));
+        p.processBlock(buf, midi);
+        if (b >= warmup)
+            for (int c = 0; c < 2; ++c)
+                for (int n = 0; n < 512; ++n)
+                    outSq += (double) buf.getSample(c, n) * buf.getSample(c, n);
+    }
+    const float rms = (float) std::sqrt(outSq / (2.0 * measure * 512.0));
+    return rms / (0.25f * 0.7071f);
+}
+
 static bool allFinite(const juce::AudioBuffer<float>& buf)
 {
     for (int c = 0; c < buf.getNumChannels(); ++c)
@@ -785,6 +816,24 @@ int main()
                   (int) processor.getEqDeboxFreq(0), (int) processor.getEqClarityFreq(0),
                   ratio > 1.35f ? "OK" : "REVERSED/BROKEN");
         }
+    }
+
+    // 16x 下默认链频响平直检查：100Hz~15kHz 输出/输入比值 ≈ 1.0（±0.03）
+    {
+        processor.prepareToPlay(48000.0, 512);
+        *apvts.getRawParameterValue("oversampling") = 4.0f; // 16x
+        const float freqs[] { 100.0f, 400.0f, 1000.0f, 4000.0f, 8000.0f, 15000.0f };
+        bool ok = true;
+        for (float f : freqs)
+        {
+            const float r = defaultRatio(processor, f);
+            const bool fOk = std::abs(r - 1.0f) < 0.03f;
+            ok = ok && fOk;
+            TRACE("flat16 check: %g Hz -> x%.4f (%+.2f dB) %s\n",
+                  f, r, 20.0 * std::log10(r), fOk ? "OK" : "BAD");
+        }
+        if (! ok) { TRACE("flat16 check: BAD\n"); return 1; }
+        TRACE("flat16 check: OK\n");
     }
 
     juce::Logger::writeToLog("Headless test passed (all blocks finite)");

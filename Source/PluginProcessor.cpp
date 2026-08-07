@@ -92,7 +92,7 @@ void MoonVocProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
     {
         oversamplers[i] = std::make_unique<juce::dsp::Oversampling<float>>(
             (size_t) numChannels, (size_t) osExponents[i],
-            juce::dsp::Oversampling<float>::filterHalfBandPolyphaseIIR,
+            juce::dsp::Oversampling<float>::filterHalfBandFIREquiripple,
             false, true);
         oversamplers[i]->initProcessing((size_t) samplesPerBlock);
         oversamplers[i]->reset();
