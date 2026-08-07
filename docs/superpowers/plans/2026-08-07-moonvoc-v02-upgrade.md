@@ -397,19 +397,19 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 - Modify: `test/HeadlessTest.cpp`（新增 16x 频响平直测试 + 基线重测）
 
 **Interfaces:**
-- Consumes: `juce::dsp::Oversampling<float>`（构造参数 `filterHalfBandPolyphaseFIR`）
+- Consumes: `juce::dsp::Oversampling<float>`（构造参数 `filterHalfBandFIREquiripple`）
 - Produces: latency 由 `oversamplers[i]->getLatencyInSamples()` 动态上报（代码已是动态，无需改）
 
 #### 设计说明
 
-`filterHalfBandPolyphaseIIR`（非线相位）在 16x 级联下相位失真累积，导致人声"闷/虚"。换成线性相位 `filterHalfBandPolyphaseFIR`。latency 上报两处（`prepareToPlay:111` 和热切换 `:181`）都已动态取 `getLatencyInSamples()`，改类型后自动正确。CPU 更高，16x 下用 `--test` 渲染验证不超时。
+`filterHalfBandPolyphaseIIR`（非线相位）在 16x 级联下相位失真累积，导致人声"闷/虚"。换成线性相位 `filterHalfBandFIREquiripple`。latency 上报两处（`prepareToPlay:111` 和热切换 `:181`）都已动态取 `getLatencyInSamples()`，改类型后自动正确。CPU 更高，16x 下用 `--test` 渲染验证不超时。
 
 - [ ] **Step 1: 改滤波器类型**
 
 `PluginProcessor.cpp:94`：
 
 ```cpp
-            juce::dsp::Oversampling<float>::filterHalfBandPolyphaseFIR,
+            juce::dsp::Oversampling<float>::filterHalfBandFIREquiripple,
 ```
 
 - [ ] **Step 2: 写 16x 频响平直测试**
@@ -481,7 +481,7 @@ powershell -NoProfile -Command "& 'E:\VST Effects Plugin Collection\moonvoc\buil
 
 Expected: `flat16 check` 各频点 `OK`；fidelity THD 断言（`defThd < -70`）仍通过（FIR 数值不同但应更优，若恰好在阈值边缘，如实更新断言值并在 commit message 说明）；渲染 8 秒测试信号无超时、输出文件生成。
 
-**若 16x FIR 渲染极慢/崩溃**：回退为按倍率混用——`osExponents[0..1]`（2x/4x）用 `filterHalfBandPolyphaseFIR`、`osExponents[2..3]`（8x/16x）保持 IIR，并在此 commit 里说明取舍。
+**若 16x FIR 渲染极慢/崩溃**：回退为按倍率混用——`osExponents[0..1]`（2x/4x）用 `filterHalfBandFIREquiripple`、`osExponents[2..3]`（8x/16x）保持 IIR，并在此 commit 里说明取舍。
 
 - [ ] **Step 4: Commit**
 
