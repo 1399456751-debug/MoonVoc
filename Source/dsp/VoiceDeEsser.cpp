@@ -85,13 +85,13 @@ void VoiceDeEsser::prepare(const juce::dsp::ProcessSpec& spec)
         bands[i].coeffs = Coeffs::makePeakFilter(fs, bands[i].targetFreq, 2.0f, 1.0f);
         bands[i].prepare(spec, fs, bands[i].coeffs);
 
-        // 时间常数：齿音瞬态快 attack 慢 release；增益平滑同
+        // 时间常数：齿音瞬态快 attack 慢 release；增益平滑同（用 OS 率，模块在超采样链内）
         const float atk = bands[i].isHighBand ? 0.4f : 0.8f;
         const float rel = 120.0f;
-        bands[i].sibAttack  = timeToCoeff(atk, sampleRate);
-        bands[i].sibRelease = timeToCoeff(rel, sampleRate);
-        bands[i].gainAttack  = timeToCoeff(atk, sampleRate);
-        bands[i].gainRelease = timeToCoeff(rel, sampleRate);
+        bands[i].sibAttack  = timeToCoeff(atk, fs);
+        bands[i].sibRelease = timeToCoeff(rel, fs);
+        bands[i].gainAttack  = timeToCoeff(atk, fs);
+        bands[i].gainRelease = timeToCoeff(rel, fs);
     }
 
     reset();

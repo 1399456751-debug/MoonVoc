@@ -4,7 +4,7 @@
 
 ## 0. 一句话总结
 
-一体化人声处理 VST3 插件（JUCE 9 + C++17），信号链：**去齿音 → 四段智能 EQ → 智能双层压缩 → 染色 → 瞬态整形**。默认状态全链透明（THD < -89dB），已发布 v0.1 到 GitHub（公开）：`https://github.com/1399456751-debug/MoonVoc`。
+一体化人声处理 VST3 插件（JUCE 9 + C++17），信号链：**去齿音 → 四段智能 EQ → 智能双层压缩 → 染色 → 瞬态整形**。默认状态全链透明（THD < -92.0dB），已发布 v0.1 到 GitHub（公开）：`https://github.com/1399456751-debug/MoonVoc`。
 
 ## 1. 环境
 
@@ -20,7 +20,7 @@
 VST3 输出：`build\MoonVoc_artefacts\Release\VST3\MoonVoc.vst3`（COPY_PLUGIN_AFTER_BUILD 会复制到系统目录，但**宿主/PluginDoctor 开着时会失败**——需手动复制）。
 
 **测试**：
-- 回归：`build\MoonVocHeadlessTest.exe`（21 项，含系数对比/THD/各模块/压力）
+- 回归：`build\MoonVocHeadlessTest.exe`（30 项，含系数对比/THD/各模块/压力）
 - UI 布局自检：`build\MoonVocUiSnapshot.exe`（打印所有控件坐标，**布局问题用它验证，不用截图**——模型看不了图）
 - 离线渲染：`build\MoonVocRender.exe 输入.wav [输出.wav]`（`--test` 生成模拟人声）
 - 冒烟：`smoke-test.ps1`
@@ -50,7 +50,7 @@ moonvoc/
 ├── assets/moon.jpg          # 用户月亮底图（嵌入）
 ├── docs/requirements.md     # v1.0 需求文档
 ├── docs/HANDOFF.md          # 本文件
-└── test/                    # HeadlessTest.cpp（21 项回归）/ WavRender / UiSnapshot
+└── test/                    # HeadlessTest.cpp（30 项回归）/ WavRender / UiSnapshot
 ```
 
 ## 4. DSP 模块（链路顺序）

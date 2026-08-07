@@ -569,6 +569,8 @@ int main()
                     maxErr = jmax(maxErr, std::abs(buf.getSample(c, n) - ref.getSample(c, n)));
         }
         TRACE("bypass check: maxErr=%.2e %s\n", maxErr, maxErr < 1.0e-6f ? "OK" : "BAD");
+        if (! (maxErr < 1.0e-6f))
+            return 1;
     }
 
     // 保真度检查：全默认参数应为透明直通（RMS 一致 + THD 极低）；逐模块开启定位失真源
@@ -723,6 +725,8 @@ int main()
         }
         TRACE("clarity lock check: worstDev=%.0f Hz (expect < 250) %s\n",
               worstDev, worstDev < 250.0f ? "OK" : "BAD");
+        if (! (worstDev < 250.0f))
+            return 1;
     }
 
     // Clarity 限增益检查：单一强共振（高对比度）→ 实际提升显著低于用户 +12dB
@@ -760,6 +764,8 @@ int main()
         const float gainDb = 20.0f * std::log10(ratio);
         TRACE("clarity cap check: gain=%.1f dB (expect < 10, > 2) %s\n",
               gainDb, gainDb < 10.0f && gainDb > 2.0f ? "OK" : "BAD");
+        if (! (gainDb < 10.0f && gainDb > 2.0f))
+            return 1;
     }
 
     // 系数公式对比：手写 writeShelf/writePeak/writeBandPass vs JUCE makeXXX 逐样本一致

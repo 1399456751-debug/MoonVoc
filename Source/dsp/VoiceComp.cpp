@@ -19,7 +19,8 @@ namespace
 VoiceComp::VoiceComp(juce::AudioProcessorValueTreeState& apvts, std::atomic<double>& osSampleRate)
     : modeParam   (apvts.getRawParameterValue(ParamID::compMode)),
       amountParam (apvts.getRawParameterValue(ParamID::compAmount)),
-      makeupParam (apvts.getRawParameterValue(ParamID::compMakeup))
+      makeupParam (apvts.getRawParameterValue(ParamID::compMakeup)),
+      dspRate(&osSampleRate)
 {
 }
 
@@ -40,7 +41,7 @@ void VoiceComp::Layer::reset()
 
 void VoiceComp::prepare(const juce::dsp::ProcessSpec& spec)
 {
-    sampleRate = spec.sampleRate;
+    sampleRate = (double) dspRate->load(); // OS 采样率（模块在超采样链内运行）
     mode = -1; // 强制下一块重算模式
     updateSmartParams((int) spec.maximumBlockSize);
     fastLayer.prepare(sampleRate);

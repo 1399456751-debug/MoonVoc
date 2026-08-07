@@ -46,6 +46,7 @@ private:
     std::atomic<float>* amountParam;
     std::atomic<float>* makeupParam;
 
+    std::atomic<double>* dspRate; // OS 采样率（模块在超采样链内运行）
     double sampleRate = 48000.0;
     Layer fastLayer, smoothLayer;
 

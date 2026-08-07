@@ -102,14 +102,17 @@ int main(int argc, char** argv)
     juce::MidiBuffer midi;
 
     juce::WavAudioFormat wavFormat;
-    juce::FileOutputStream outStream{ juce::File(outPath) };
-    if (outStream.failedToOpen())
+    auto outStream = std::make_unique<juce::FileOutputStream>(juce::File(outPath));
+    if (outStream->failedToOpen())
     {
         std::printf("无法创建输出文件: %s\n", outPath.toRawUTF8());
         return 1;
     }
+    std::unique_ptr<juce::OutputStream> stream(std::move(outStream)); // 所有权移交给 writer
     std::unique_ptr<juce::AudioFormatWriter> writer(wavFormat.createWriterFor(
-        &outStream, sampleRate, numCh, 24, {}, 0));
+        stream, juce::AudioFormatWriter::Options{}.withSampleRate(sampleRate)
+                                                  .withNumChannels(numCh)
+                                                  .withBitsPerSample(24)));
     if (writer == nullptr)
     {
         std::printf("无法创建 WAV writer\n");
