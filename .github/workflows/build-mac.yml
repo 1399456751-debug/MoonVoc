@@ -1,0 +1,71 @@
+# MoonVoc beta0.5 — macOS Universal 构建（VST3 + Standalone）
+# 触发：手动（Actions 页 Run workflow）或 push v* 标签
+# 注意：免费 CI 无 Apple 签名，只能产 VST3 + Standalone（AU 必须签名才能加载）
+name: Build MoonVoc (macOS Universal)
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-mac:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Checkout JUCE 9.0.0
+        run: |
+          git clone --depth 1 --branch 9.0.0 https://github.com/juce-framework/JUCE.git "$RUNNER_TEMP/JUCE"
+
+      - name: Configure CMake (Release, universal arm64+x86_64)
+        run: |
+          cmake -B build -S . \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DJUCE_ROOT="$RUNNER_TEMP/JUCE" \
+            -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
+
+      - name: Build plugin
+        run: cmake --build build --target MoonVoc --parallel
+
+      - name: Package zip
+        run: |
+          mkdir -p dist/MoonVoc_beta0.5_Mac
+          cp -R build/MoonVoc_artefacts/Release/VST3/MoonVoc.vst3 dist/MoonVoc_beta0.5_Mac/
+          cp -R build/MoonVoc_artefacts/Release/Standalone/MoonVoc.app dist/MoonVoc_beta0.5_Mac/
+          cat > dist/MoonVoc_beta0.5_Mac/README_Install.txt <<'EOF'
+MoonVoc beta 0.5 - macOS 版本
+==============================
+
+本包为【未签名】构建（GitHub Actions 免费编译，无 Apple 开发者签名）。
+
+包含：
+  - MoonVoc.vst3  (VST3 插件)
+  - MoonVoc.app   (独立运行程序)
+
+安装 VST3：
+  把 MoonVoc.vst3 复制到  ~/Library/Audio/Plug-Ins/VST3/
+  然后在 DAW（REAPER / Studio One / Cubase / FL Studio 等支持 VST3 的宿主）
+  里重新扫描插件即可。
+
+首次加载（未签名提示）：
+  若宿主提示插件未签名/无法打开，在 Finder 中右键
+  MoonVoc.vst3（或 MoonVoc.app）-> 打开，确认一次即可；
+  或在终端执行：
+    xattr -cr ~/Library/Audio/Plug-Ins/VST3/MoonVoc.vst3
+
+注意：本包不含 AU 格式（AU 必须 Apple 签名才能加载，免费 CI 无法提供）。
+
+独立运行：双击 MoonVoc.app（首次同样需右键打开）。
+
+TUJZMIXING / MoonVoc 0.5.0
+EOF
+          cd dist && zip -qr ../MoonVoc_beta0.5_MacUniversal.zip MoonVoc_beta0.5_Mac
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MoonVoc_beta0.5_MacUniversal
+          path: MoonVoc_beta0.5_MacUniversal.zip
+          retention-days: 30

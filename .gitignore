@@ -1,4 +1,6 @@
 build/
-*.png
-*.jpg
-ui_snapshot*
+dist/
+# 忽略根目录截图，但不忽略 assets/ 下嵌入 UI 的素材
+/ui_snapshot*
+/ui_snapshot.png
+/ui_snapshot.jpg
