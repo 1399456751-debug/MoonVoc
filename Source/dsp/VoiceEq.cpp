@@ -84,6 +84,12 @@ void VoiceEq::SmartBand::reset()
         for (auto& f : filters[p])
             f.reset();
     std::fill(std::begin(ema), std::end(ema), 0.0f);
+    // 清峰锁定状态与活跃标记，避免 prepare/transport 重启后残留上一段锁
+    lockedIndex = -1;
+    lockedBaseline = 0.0f;
+    unlockTimer = 0;
+    std::fill(std::begin(targetContrast), std::end(targetContrast), 0.0f);
+    std::fill(std::begin(active), std::end(active), false);
 }
 
 void VoiceEq::SmartBand::runDetectors(const juce::dsp::AudioBlock<const float>& monoBlock,

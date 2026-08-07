@@ -640,9 +640,11 @@ int main()
 
         juce::AudioBuffer<float> buf(2, 512);
         juce::MidiBuffer midi;
+        float worstDev = 0.0f;
         for (int b = 0; b < 3000; ++b)
         {
-            const float f2Amp = (b % 400 < 200) ? 0.32f : 0.03f; // f2 周期性增强
+            // 先 200 块弱相让锁定建立于 f1(3150)，再 200 块强相考验锁定保持
+            const float f2Amp = (b % 400 < 200) ? 0.03f : 0.32f;
             for (int c = 0; c < 2; ++c)
                 for (int n = 0; n < 512; ++n)
                 {
@@ -651,10 +653,11 @@ int main()
                                        + f2Amp * std::sin(2.0f * 3.14159f * 2500.0f * t));
                 }
             processor.processBlock(buf, midi);
+            if (b % 400 >= 200)   // f2 强相：无锁定时会倾向 2500
+                worstDev = jmax(worstDev, std::abs(processor.getEqClarityFreq(0) - 3150.0f));
         }
-        const float locked = processor.getEqClarityFreq(0);
-        TRACE("clarity lock check: locked=%d Hz (expect ~3150) %s\n",
-              (int) locked, std::abs(locked - 3150.0f) < 250.0f ? "OK" : "BAD");
+        TRACE("clarity lock check: worstDev=%.0f Hz (expect < 250) %s\n",
+              worstDev, worstDev < 250.0f ? "OK" : "BAD");
     }
 
     // Clarity 限增益检查：单一强共振（高对比度）→ 实际提升显著低于用户 +12dB
