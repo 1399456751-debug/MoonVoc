@@ -13,6 +13,7 @@ public:
 
     void paint(juce::Graphics&) override;
     void resized() override;
+    void mouseMove(const juce::MouseEvent& e) override { mousePos = e.getPosition(); }
 
     // 布局自检（打印关键控件 bounds，供程序化验证）
     void dumpLayout() const;
@@ -43,6 +44,7 @@ private:
     struct Star { float x, y, size; };
     std::array<Star, 42> stars;
     juce::Image moonImage; // 月亮背景图（最底层半透明）
+    juce::Point<int> mousePos; // 鼠标位置（面板悬停发光用）
 
     // 背景漂浮粒子（相对坐标 0~1，随窗口缩放）
 

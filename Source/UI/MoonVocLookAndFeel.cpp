@@ -135,10 +135,11 @@ void MoonVocLookAndFeel::drawRotarySlider(juce::Graphics& g, int x, int y, int w
     g.setColour(Theme::accentHi);
     g.drawLine(centre.x, centre.y, ptrEnd.x, ptrEnd.y, 1.6f);
 
-    // 悬停/拖动光圈（外扩发光）
+    // 悬停/拖动光圈（外扩发光，随值脉冲）
     if (slider.isMouseOverOrDragging())
     {
-        g.setColour(Theme::accent.withAlpha(0.16f));
+        const float pulse = 0.16f + 0.10f * (0.5f + 0.5f * std::sin(slider.getValue() * 4.0f));
+        g.setColour(Theme::accent.withAlpha(pulse));
         g.fillEllipse(area.expanded(4.0f));
     }
 }
@@ -202,6 +203,11 @@ void MoonVocLookAndFeel::drawComboBox(juce::Graphics& g, int w, int h, bool,
 
     g.setColour(Theme::panel.darker(0.25f));
     g.fillRoundedRectangle(r, 4.0f);
+    if (cb.isMouseOver())
+    {
+        g.setColour(Theme::panel.brighter(0.10f));
+        g.fillRoundedRectangle(r, 4.0f);
+    }
     g.setColour(cb.isMouseOver() ? Theme::accent.withAlpha(0.8f) : Theme::panelEdge);
     g.drawRoundedRectangle(r, 4.0f, 1.0f);
 

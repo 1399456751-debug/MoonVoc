@@ -375,13 +375,20 @@ void MoonVocEditor::paint(juce::Graphics& g)
         g.setGradientFill(topGlow);
         g.fillRect(0, 0, getWidth(), 130);
     }
-    // 月亮背景图（最底层，全屏放大，半透明隐隐透出）
-    if (moonImage.isValid())
+    // 星云光斑：2 个大半径紫色渐变斑，缓慢漂移（氛围层）
     {
-        g.setOpacity(0.20f);
-        g.drawImage(moonImage, juce::Rectangle<float>(0.0f, 0.0f, (float) getWidth(), (float) getHeight()),
-                    juce::RectanglePlacement::stretchToFit);
-        g.setOpacity(1.0f);
+        const juce::Point<float> c1 { getWidth() * (0.25f + 0.05f * std::sin(indicatorPhase * 0.21f)),
+                                      getHeight() * (0.35f + 0.04f * std::cos(indicatorPhase * 0.17f)) };
+        juce::ColourGradient n1(Theme::accent.withAlpha(0.05f), c1.x, c1.y,
+                                juce::Colours::transparentBlack, c1.x + 220.0f, c1.y + 220.0f, true);
+        g.setGradientFill(n1);
+        g.fillEllipse(c1.x - 220.0f, c1.y - 220.0f, 440.0f, 440.0f);
+        const juce::Point<float> c2 { getWidth() * (0.72f + 0.04f * std::cos(indicatorPhase * 0.13f)),
+                                      getHeight() * (0.62f + 0.05f * std::sin(indicatorPhase * 0.19f)) };
+        juce::ColourGradient n2(Theme::accentHi.withAlpha(0.04f), c2.x, c2.y,
+                                juce::Colours::transparentBlack, c2.x + 260.0f, c2.y + 260.0f, true);
+        g.setGradientFill(n2);
+        g.fillEllipse(c2.x - 260.0f, c2.y - 260.0f, 520.0f, 520.0f);
     }
 
     // 金属纹理（盖在月亮图上，增强质感）
@@ -391,33 +398,65 @@ void MoonVocEditor::paint(juce::Graphics& g)
                 juce::RectanglePlacement::stretchToFit);
     g.setOpacity(1.0f);
 
-    // 星野（微弱闪烁点）
+    // 月亮背景：居中圆形主视觉（取代全屏 20% 半透明）
+    if (moonImage.isValid())
+    {
+        const float moonDiam = getHeight() * 0.55f;
+        const juce::Point<float> mc { getWidth() * 0.5f, getHeight() * 0.42f };
+        const juce::Rectangle<float> mr { mc.x - moonDiam * 0.5f, mc.y - moonDiam * 0.5f,
+                                          moonDiam, moonDiam };
+        // 圆形裁剪 + 柔边：先画带柔边的光晕，再画圆内月轮
+        juce::ColourGradient halo(Theme::accent.withAlpha(0.14f), mc.x, mc.y,
+                                  juce::Colours::transparentBlack, mc.x, mc.y + moonDiam * 0.52f, true);
+        g.setGradientFill(halo);
+        g.fillEllipse(mc.x - moonDiam * 0.52f, mc.y - moonDiam * 0.52f,
+                      moonDiam * 1.04f, moonDiam * 1.04f);
+        juce::Path clip;
+        clip.addEllipse(mr);
+        g.saveState();
+        g.reduceClipRegion(clip);
+        g.setOpacity(0.50f);
+        g.drawImage(moonImage, mr, juce::RectanglePlacement::stretchToFit);
+        g.setOpacity(1.0f);
+        g.restoreState();
+    }
+
+    // 星野（微弱闪烁点，电平驱动亮度）
+    const float lvlGlow = jlimit(0.0f, 1.0f, (processorRef.inputLevelDb.load() + 60.0f) / 60.0f);
     for (auto& s : stars)
     {
         const juce::Point<float> p { s.x * getWidth(), s.y * getHeight() };
-        g.setColour(juce::Colours::white.withAlpha(0.12f + 0.10f * (0.5f + 0.5f * std::sin(s.x * 7.3f + s.y * 3.1f + indicatorPhase * 0.5f))));
+        const float twinkle = 0.12f + 0.10f * (0.5f + 0.5f * std::sin(s.x * 7.3f + s.y * 3.1f + indicatorPhase * 0.5f));
+        g.setColour(juce::Colours::white.withAlpha(jmin(0.9f, twinkle + 0.15f * lvlGlow)));
         g.fillEllipse(p.x, p.y, s.size, s.size);
     }
 
-    // 程序化血月（右上角，暗红血月 + 血色光晕，叠加在月亮底图上）
+    // 右上角环形品牌徽章（替换程序化血月）：呼吸光晕 + 圆环 + 八角星标 + 上下文字
     {
         const juce::Point<float> mc { getWidth() - 150.0f, 100.0f };
-        const float mr = 46.0f;
-        juce::ColourGradient halo(juce::Colour(0xff4a1020), mc.x, mc.y,
-                                  juce::Colours::transparentBlack, mc.x, mc.y + mr * 3.2f, true);
-        halo.addColour(0.35, juce::Colour(0xff3a0c18));
-        g.setGradientFill(halo);
-        g.fillEllipse(mc.x - mr * 3.0f, mc.y - mr * 3.0f, mr * 6.0f, mr * 6.0f);
-        juce::ColourGradient moon(juce::Colour(0xff7a2030), mc.x - mr * 0.3f, mc.y - mr * 0.3f,
-                                  juce::Colour(0xff1a060c), mc.x + mr * 0.5f, mc.y + mr * 0.5f, true);
-        moon.addColour(0.5, juce::Colour(0xff4a1220));
-        g.setGradientFill(moon);
-        g.fillEllipse(mc.x - mr, mc.y - mr, mr * 2, mr * 2);
-        g.setColour(juce::Colour(0xff8a3040));
-        g.drawEllipse(mc.x - mr, mc.y - mr, mr * 2, mr * 2, 1.2f);
-        g.setColour(juce::Colour(0xff20080e));
-        g.fillEllipse(mc.x - mr * 0.45f, mc.y - mr * 0.3f, mr * 0.6f, mr * 0.55f);
-        g.fillEllipse(mc.x + mr * 0.15f, mc.y + mr * 0.25f, mr * 0.4f, mr * 0.35f);
+        const float r = 30.0f;
+        const float breathe = 0.5f + 0.5f * std::sin(indicatorPhase * 0.5f);
+        g.setColour(Theme::accent.withAlpha(0.10f + 0.10f * breathe));
+        g.fillEllipse(mc.x - r * 1.7f, mc.y - r * 1.7f, r * 3.4f, r * 3.4f);
+        g.setColour(Theme::accent.withAlpha(0.5f));
+        g.drawEllipse(mc.x - r, mc.y - r, r * 2, r * 2, 1.2f);
+        // 八角星标（两菱形叠加）
+        juce::Path star;
+        star.addQuadrilateral(mc.x, mc.y - r * 0.55f, mc.x + r * 0.55f, mc.y,
+                              mc.x, mc.y + r * 0.55f, mc.x - r * 0.55f, mc.y);
+        star.addQuadrilateral(mc.x - r * 0.55f, mc.y, mc.x, mc.y + r * 0.55f,
+                              mc.x + r * 0.55f, mc.y, mc.x, mc.y - r * 0.55f);
+        g.setColour(Theme::accentHi);
+        g.fillPath(star);
+        g.setColour(juce::Colours::white.withAlpha(0.9f));
+        g.fillEllipse(mc.x - 1.6f, mc.y - 1.6f, 3.2f, 3.2f);
+        // 上下弧线文字
+        Theme::drawGlowText(g, "TUJZMIXING",
+                            juce::Rectangle<float>(mc.x - r, mc.y - r - 16, r * 2, 12).toFloat(),
+                            Theme::fontLabel(9.0f), Theme::textDim, juce::Justification::centred);
+        Theme::drawGlowText(g, "MOONVOC SYSTEMS",
+                            juce::Rectangle<float>(mc.x - r, mc.y + r + 4, r * 2, 12).toFloat(),
+                            Theme::fontLabel(9.0f), Theme::textDim, juce::Justification::centred);
     }
 
     // 面板块：暗紫面板 + 精致描边（外细边 + 顶部内高光 + 顶部微光）
@@ -426,8 +465,9 @@ void MoonVocEditor::paint(juce::Graphics& g)
         if (r.isEmpty())
             return;
         const auto rf = r.toFloat();
-        // 面板底（更深的紫玻璃感）
-        g.setColour(Theme::panel.darker(0.12f).withAlpha(0.78f));
+        // 面板底（更深的紫玻璃感）；中列面板更透明，让月亮透出
+        const bool isMid = (r.getX() == panelMid.getX() && r.getWidth() == panelMid.getWidth());
+        g.setColour(Theme::panel.darker(0.12f).withAlpha(isMid ? 0.60f : 0.78f));
         g.fillRoundedRectangle(rf, 6.0f);
         // 内部深邃渐变（顶亮底暗）
         juce::ColourGradient depth(Theme::panel.brighter(0.10f).withAlpha(0.5f), 0.0f, (float) r.getY(),
@@ -452,6 +492,17 @@ void MoonVocEditor::paint(juce::Graphics& g)
     drawPanel(panelLeft);
     drawPanel(panelMid);
     drawPanel(panelRight);
+
+    // 悬停发光描边（叠在面板之上）
+    auto hoverEdge = [&](const juce::Rectangle<int>& r)
+    {
+        if (r.contains(mousePos))
+        {
+            g.setColour(Theme::accent.withAlpha(0.30f));
+            g.drawRoundedRectangle(r.toFloat().expanded(2.0f), 8.0f, 1.5f);
+        }
+    };
+    hoverEdge(panelGlobal); hoverEdge(panelLeft); hoverEdge(panelMid); hoverEdge(panelRight);
     
     // 区标题：左侧紫色竖条（设计感）
     auto drawSectionBar = [&](const juce::Label& l)
@@ -494,6 +545,16 @@ void MoonVocEditor::paint(juce::Graphics& g)
     g.setColour(Theme::accentHi.withAlpha(0.5f));
     g.fillEllipse((float) (panelGlobal.getCentreX() - 2), (float) (panelGlobal.getBottom() + (panelLeft.getY() - panelGlobal.getBottom()) / 2) - 2, 4.0f, 4.0f);
 
+    // 能量连线上的流动光点（0.55s 一趟）
+    {
+        const float t = std::fmod(indicatorPhase, 1.0f);
+        const float x = (float) panelGlobal.getCentreX();
+        const float y = (float) panelGlobal.getBottom()
+                      + ((float) panelLeft.getY() - (float) panelGlobal.getBottom()) * t;
+        g.setColour(Theme::accentHi.withAlpha(0.8f));
+        g.fillEllipse(x - 2.0f, y - 2.0f, 4.0f, 4.0f);
+    }
+
     // 底部能量线（超采样横条上方横贯，渐隐两端）
     {
         const int ey = 556;
@@ -511,6 +572,11 @@ void MoonVocEditor::paint(juce::Graphics& g)
     auto titleArea = getLocalBounds().removeFromTop(56);
     auto titleBox = titleArea.withSizeKeepingCentre(500, 46).translated(0, -4);
     auto titleFont = Theme::fontTitle(44.0f);
+
+    // 标题呼吸光晕
+    const float titleBreathe = 0.5f + 0.5f * std::sin(indicatorPhase * 0.7f);
+    g.setColour(Theme::accent.withAlpha(0.03f + 0.03f * titleBreathe));
+    g.fillRoundedRectangle(titleBox.toFloat().expanded(14.0f), 18.0f);
 
     Theme::drawGlowText(g, "MoonVoc", titleBox.toFloat(),
                         titleFont, Theme::accent, juce::Justification::centred);
