@@ -4,7 +4,7 @@
 
 ## 0. 一句话总结
 
-**Clarity 频点锁定消除扫动 + 刺耳峰限增益；全链 0 值严格直通 + 超采样换线性相位 FIR；UI 加动态氛围 + 旋钮微升级；月亮居中放大裁成圆月。** 涉及文件：`Source/dsp/VoiceEq.*`、`Source/PluginProcessor.cpp`、各 DSP 模块 0 值审计、`Source/PluginEditor.cpp`、`Source/UI/MoonVocLookAndFeel.*`、`test/HeadlessTest.cpp`。
+**Clarity 频点锁定消除扫动 + 刺耳峰限增益；全链 0 值严格直通 + 超采样换线性相位 FIR；UI 加动态氛围 + 旋钮微升级；月亮居中放大裁成圆月 + 右上角程序化血月替换为环形品牌徽章。** 涉及文件：`Source/dsp/VoiceEq.*`、`Source/PluginProcessor.cpp`、各 DSP 模块 0 值审计、`Source/PluginEditor.cpp`、`Source/UI/MoonVocLookAndFeel.*`、`test/HeadlessTest.cpp`。
 
 ---
 
@@ -140,6 +140,7 @@ effectiveGain = userGain × (1.0 - 0.5 × clamp((contrast - 2.0) / (5.0 - 2.0), 
 - **清晰度**：透明度 0.20 → **~0.50**；全屏金属纹理不再压住月亮区（月亮绘制在金属纹理**之上**，或降低金属纹理对该区域的遮挡）；
 - **层次**：三列面板仍浮在上层（半透明），月亮透过面板隐约可见。中列面板（Comp+EQ）透明度从 0.78 略降至 ~0.60，让月亮透出；**旋钮/文字保持清晰可读**（面板底色仍足够深）；
 - 月亮中心放置于窗口中心偏上（cy ≈ 42%H），**不改变任何控件 bounds**——月亮纯作为背景层绘制，下缘可落入三列面板之间的空隙，上缘露出于标题区下方背景，不触碰控件矩形。
+- **右上角程序化血月替换**（用户确认）：原 `paint()` 里右上角 `(getWidth()-150, 100)` 的程序化暗红血月（半径 46px）**移除**，替换为**环形品牌徽章**——紫色发光圆环 + 环形文字（`TUJZMIXING · MOONVOC · SYSTEMS ·`）+ 中心发光星标/菱形，与右下角 `TUJZMIXING-DSP` LOGO 呼应，增强品牌感。绘制为静态元素（可随 indicatorPhase 轻微呼吸），不占控件区域。
 
 ### 4.3 验证
 
