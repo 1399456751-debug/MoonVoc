@@ -1,17 +1,17 @@
-# MoonVoc 交接文档（v0.2）
+# MoonVoc 交接文档（beta0.5）
 
-> 给下一个会话/模型：读完这份文档即可无缝接手。最后更新：2026-08-07（v0.2：Clarity 峰锁定 + 线性相位 FIR 超采样 + UI 氛围升级）
+> 给下一个会话/模型：读完这份文档即可无缝接手。最后更新：2026-08-08（beta0.5：Windows 已编译打包发布测试，macOS CI 未跑通已删，见 §11）
 
 ## 0. 一句话总结
 
-一体化人声处理 VST3 插件（JUCE 9 + C++17），信号链：**去齿音 → 四段智能 EQ → 智能双层压缩 → 染色 → 瞬态整形**。默认状态全链透明（THD < -92.0dB），已发布 v0.1 到 GitHub（公开）：`https://github.com/1399456751-debug/MoonVoc`。
+一体化人声处理 VST3 插件（JUCE 9 + C++17），信号链：**去齿音 → 四段智能 EQ → 智能双层压缩 → 染色 → 瞬态整形**。默认状态全链透明（THD < -92.0dB），GitHub 公开：`https://github.com/1399456751-debug/MoonVoc`。**beta0.5（版本 0.5.0）Windows 版已编译打包发用户测试，见 §11**。
 
 ## 1. 环境
 
 | 项 | 值 |
 |---|---|
 | 项目路径 | `E:\VST Effects Plugin Collection\moonvoc`（**路径含空格**） |
-| JUCE | `C:\JUCE`（**JUCE 9 新版，headless 架构，API 与网上教程差异巨大，见 §7**） |
+| JUCE | `C:\JUCE`（**JUCE 9 新版，headless 架构，API 与网上教程差异巨大，见 §7**）。CMakeLists 用缓存变量 `JUCE_ROOT`（默认 `C:/JUCE`，CI 传 `-DJUCE_ROOT=` 覆盖） |
 | 编译器 | MSVC 14.44（VS2022 BuildTools：`C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools`） |
 | 构建 | CMake 4.4.2 + Ninja（Ninja 在 BuildTools 内，`build.bat` 自动加载 vcvars64） |
 | 操作系统 | Windows 11 |
@@ -39,6 +39,7 @@ VST3 输出：`build\MoonVoc_artefacts\Release\VST3\MoonVoc.vst3`（COPY_PLUGIN_
 ```
 moonvoc/
 ├── CMakeLists.txt          # 4 个 target：MoonVoc(插件) / HeadlessTest / Render / UiSnapshot
+│                           # 版本 0.5.0；JUCE_ROOT 缓存变量（默认 C:/JUCE，见 §1）
 ├── build.bat               # vcvars64 + Ninja 构建
 ├── Source/
 │   ├── PluginProcessor.h/.cpp   # 处理器：APVTS、超采样 4 实例、电平表、链路调度
@@ -47,7 +48,8 @@ moonvoc/
 │   ├── UI/MoonVocLookAndFeel.h/.cpp  # 旋钮/开关/下拉/标签辉光全自绘 + Theme 色板 + 字体
 │   └── dsp/                      # 6 个 DSP 模块（见 §4）
 ├── fonts/                   # Montserrat Bold/SemiBold/Medium（OFL，嵌入 BinaryData）
-├── assets/moon.jpg          # 用户月亮底图（嵌入）
+├── assets/moon.jpg          # 用户月亮底图（嵌入，beta0.5 起入库）
+├── dist/                    # beta0.5 打包输出（.gitignore 忽略）
 ├── docs/requirements.md     # v1.0 需求文档
 ├── docs/HANDOFF.md          # 本文件
 └── test/                    # HeadlessTest.cpp（30 项回归）/ WavRender / UiSnapshot
@@ -87,8 +89,15 @@ moonvoc/
 - [x] UI 氛围升级：月全食背景 + 动态辉光 + 星野呼吸
 - [x] 月亮圆月主视觉 + 右上角环形品牌徽章
 
+**beta0.5 发布（2026-08-08）**：
+- [x] 版本号 0.2.0 → 0.5.0（project VERSION + 3 处 VersionString + 3 处 VersionCode 0x500）
+- [x] Windows 编译打包：`dist/MoonVoc_beta0.5_Win64.zip`（VST3 + Standalone + 说明），headless 复跑全绿
+- [x] `.gitignore` 放行 `assets/moon.jpg`（否则 CI/换机编译缺素材）、忽略 `dist/`
+- [x] 已 push GitHub main（`eb45776` release / `71cded2` workflow fix / `622095e` 删 workflow）
+- [ ] macOS 未产出：GitHub Actions workflow 解析失败（on/name 未被识别），已删除，见 §11
+
 **待办**：
-- [ ] **AI 未做**：正式发布需 pluginval 验证（未安装）、macOS 移植（需求里有）
+- [ ] **AI 未做**：正式发布需 pluginval 验证（未安装）、macOS 移植（已尝试未成，见 §11）
 - [ ] 图标/安装包/签名未做
 - [ ] README.md 未写（可基于 docs/requirements.md 生成）
 - [ ] UI 布局未动，待用户后续反馈是否重构布局
@@ -115,7 +124,7 @@ moonvoc/
 2. **OS 采样率错位**：模块在 OS 链内运行，一切系数/时间常数必须用 `dspRate`（OS 率）而非 spec.sampleRate；**检测带通系数要每块重写**（OS 倍率热切换后旧系数全错位）
 3. **状态残留**：测试间参数残留会污染测量（bandGainRatio 已全量重置）；THD 测量必须相干采样（468.75Hz=512 样本整数周期）
 
-## 9. 测试基线（v0.2，30+ 项全绿）
+## 9. 测试基线（beta0.5 复跑全绿，EXIT=0 无 FAIL）
 
 - 系数公式 vs JUCE 官方：maxErr ≤ 2.4e-7 ✓（7 组：lowShelf ±6 →1.19e-7、highShelf +3 →2.38e-7、peak ±5 →1.19e-7、bandpass →9.31e-10 / Q6 →1.19e-7）
 - 默认直通 THD：**-92.0dB** ✓（FIR 超采样后比 v0.1 的 -89.5dB 更低）；压缩 100%：-117.2dB；Edge ±100：-76.9/-75.5dB；去齿音 100%：-92.0dB；饱和 FET/Tube：-48.4/-53.3dB（设计染色）
@@ -132,3 +141,22 @@ moonvoc/
 
 - 反馈邮箱（写在测试包说明里）：1399456751@qq.com
 - GitHub：github.com/1399456751-debug（账号名 1399456751-debug）
+
+## 11. 版本发布记录（beta0.5，2026-08-08）
+
+### 交付物
+- **Windows zip**：`E:\VST Effects Plugin Collection\moonvoc\dist\MoonVoc_beta0.5_Win64.zip`（5.4MB）
+  - 内容：`MoonVoc.vst3`（装 `C:\Program Files\Common Files\VST3\`）+ `MoonVoc.exe`（独立运行）+ `README_Install.txt`（中文安装说明）
+  - 构建：build.bat（Release），headless 回归复跑全绿（EXIT=0、无 FAIL）
+- **GitHub main 已同步**：`eb45776`（release beta0.5 + CMakeLists JUCE_ROOT + moon.jpg 入库 + workflow 初版）/ `71cded2`（workflow 改纯 ASCII）/ `622095e`（删除 workflow）
+
+### 网络与 push 备忘（重要）
+- **本机直连 github.com 不通**（443 被重置），必须走代理：`HTTP_PROXY/HTTPS_PROXY=http://127.0.0.1:7897`（Clash Verge，用户本机端口 7897）
+- git push / gh 命令都要带代理环境变量（bash 每次调用 shell 状态不持久，需在同一命令内 export 后再执行）
+- gh token 已补 `workflow` scope（`gh auth refresh -h github.com -s workflow`），以后可建/改 workflow 文件
+
+### macOS 移植失败记录（若下次再做，先读这里）
+- **硬约束**：GitHub Actions 免费版无法给 AU 签名（unsigned AU 无法加载），Mac 版只能产 **VST3 + Standalone**，且 VST3 未签名首次加载需右键"打开"或 `xattr -cr`
+- **曾尝试**：写 `.github/workflows/build-mac.yml`（universal arm64+x86_64，clone JUCE 9.0.0 → cmake → 打包 upload-artifact），push 后 GitHub **未能解析 on/name**：`gh api .../actions/workflows/<file>` 的 `events` 为空、`name` 回退为文件路径名、`workflow_dispatch` 触发返回 422
+- **已排查**：文件无 BOM（UTF-8 无 BOM）、行尾纯 LF（CR=0）、YAML 结构标准；注释与 name 改纯 ASCII 重 push 后仍不解析。**根因未查明**
+- **建议**：下次先建一个仅含 `on: workflow_dispatch` + 一条 echo 的极简 workflow 验证 GitHub 能否解析，再逐步加内容；push tag `v*` 也可作为触发路径
