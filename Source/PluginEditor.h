@@ -55,6 +55,7 @@ private:
     juce::Slider inputGainSlider, headroomSlider, outputGainSlider;
     juce::Label inputGainLabel, headroomLabel, outputGainLabel;
     juce::ComboBox oversamplingBox;
+    juce::Label oversamplingLabel; // 超采样下拉框标签（"Oversampling"）
 
     // EQ
     juce::Slider boostSlider, deboxSlider, claritySlider, airSlider;

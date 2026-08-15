@@ -96,6 +96,12 @@ moonvoc/
 - [x] 已 push GitHub main（`eb45776` release / `71cded2` workflow fix / `622095e` 删 workflow）
 - [ ] macOS 未产出：GitHub Actions workflow 解析失败（on/name 未被识别），已删除，见 §11
 
+**2026-08-15 超采样档位调整（未提交）**：
+- [x] 档位 **Off/2x/4x/8x/16x → 2x/4x/8x/16x**（去掉 Off，默认仍 16x=index 3）；`osExponents` 保持 {1,2,3,4}，index 0~3 直接映射，latency 恒上报
+- [x] **根因**：用户"看不到调节窗口"是因为 `drawComboBox` 不绘制选中文字、无标签 → 底部横条加 "Oversampling" 标签 + LAF 绘制当前档位文字（所有下拉框受益）
+- [x] 测试适配：16x 越界 4.0→3.0；严格直通（原依赖 Off 逐样本相等）改为 **RMS 能量守恒**（2x FIR 通带纹波 ~0.15%，容差 1%）；headless 全绿 EXIT=0
+- [ ] 待打包发布 / 更新用户测试包
+
 **待办**：
 - [ ] **AI 未做**：正式发布需 pluginval 验证（未安装）、macOS 移植（已尝试未成，见 §11）
 - [ ] 图标/安装包/签名未做

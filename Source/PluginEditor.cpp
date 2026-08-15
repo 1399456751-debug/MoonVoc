@@ -55,7 +55,12 @@ MoonVocEditor::MoonVocEditor(MoonVocProcessor& p)
     setupSlider(inputGainSlider,  inputGainLabel,  "Input");
     setupSlider(headroomSlider,   headroomLabel,   "Headroom");
     setupSlider(outputGainSlider, outputGainLabel, "Output");
-    setupCombo(oversamplingBox, { "Off", "2x", "4x", "8x", "16x" });
+    setupCombo(oversamplingBox, { "2x", "4x", "8x", "16x" });
+    oversamplingLabel.setText("Oversampling", juce::dontSendNotification);
+    oversamplingLabel.setJustificationType(juce::Justification::centredRight);
+    oversamplingLabel.setColour(juce::Label::textColourId, Theme::textDim);
+    oversamplingLabel.setFont(Theme::fontLabel(12.0f));
+    addAndMakeVisible(oversamplingLabel);
 
     // EQ
     setupSlider(boostSlider,   boostLabel,   "Thick");
@@ -193,6 +198,7 @@ void MoonVocEditor::dumpLayout() const
     print("edgeSlider",    edgeSlider.getBounds());
     print("compAmountSlider", compAmountSlider.getBounds());
     print("indicatorRect", indicatorRect);
+    print("oversamplingLabel", oversamplingLabel.getBounds());
     print("oversamplingBox", oversamplingBox.getBounds());
     print("grCompRect", grCompRect);
     print("grDeessRect", grDeessRect);
@@ -672,10 +678,11 @@ void MoonVocEditor::resized()
     area.removeFromTop(52);   // 标题/指示灯
     area.removeFromBottom(14); // LOGO
 
-    // 底部横条：超采样 + 工作电平指示灯
+    // 底部横条：超采样（标签 + 下拉框）+ 工作电平指示灯
     auto bottomRow = area.removeFromBottom(56);
     {
-        auto b = bottomRow.removeFromLeft(180);
+        auto b = bottomRow.removeFromLeft(240);
+        oversamplingLabel.setBounds(b.removeFromLeft(100).removeFromTop(20).translated(0, 6));
         oversamplingBox.setBounds(b.removeFromLeft(130).removeFromTop(26).translated(0, 4));
         // 工作电平指示灯：超采样右侧
         indicatorRect = bottomRow.withSizeKeepingCentre(44, 44).translated(0, -2);

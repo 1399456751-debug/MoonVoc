@@ -33,9 +33,9 @@ AP::ParameterLayout MoonVocProcessor::createParameterLayout()
     p.push_back(std::make_unique<Param>(ParamID::inputGain,  "Input",   -12.0f, 12.0f, 0.0f));
     p.push_back(std::make_unique<Param>(ParamID::outputGain, "Output",  -12.0f, 12.0f, 0.0f));
     p.push_back(std::make_unique<Param>(ParamID::headroom,   "Headroom", -12.0f, 12.0f, 0.0f));
-    // 默认 16x：延迟可接受，追求最低失真
+    // 默认 16x：延迟可接受，追求最低失真（2x/4x/8x/16x 无 Off）
     p.push_back(std::make_unique<Choice>(ParamID::oversampling, "Oversampling",
-        juce::StringArray{ "Off", "2x", "4x", "8x", "16x" }, 4));
+        juce::StringArray{ "2x", "4x", "8x", "16x" }, 3));
 
     // EQ（四段智能）
     p.push_back(std::make_unique<Param>(ParamID::eqLowBoost, "Thick (bass auto)", -12.0f, 12.0f, 0.0f));
@@ -98,18 +98,10 @@ void MoonVocProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
         oversamplers[i]->reset();
     }
 
-    // 超采样参数：0=Off，1..4 = 2x/4x/8x/16x
-    currentOsIndex.store(juce::jlimit(0, 4, (int) oversamplingParam->load()));
-    if (currentOsIndex.load() == 0)
-    {
-        dspSampleRate.store(sampleRate);
-        setLatencySamples(0);
-    }
-    else
-    {
-        dspSampleRate.store(sampleRate * (1 << osExponents[currentOsIndex.load() - 1]));
-        setLatencySamples(oversamplers[currentOsIndex.load() - 1]->getLatencyInSamples());
-    }
+    // 超采样参数：0..3 = 2x/4x/8x/16x
+    currentOsIndex.store(juce::jlimit(0, 3, (int) oversamplingParam->load()));
+    dspSampleRate.store(sampleRate * (1 << osExponents[currentOsIndex.load()]));
+    setLatencySamples(oversamplers[currentOsIndex.load()]->getLatencyInSamples());
 
     // 链路在 OS 采样率下跑
     juce::dsp::ProcessSpec osSpec{ sampleRate, (juce::uint32) samplesPerBlock, numChannels };
@@ -148,22 +140,14 @@ void MoonVocProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::Midi
     headroomGain.setGainDecibels(apvts.getRawParameterValue(ParamID::headroom)->load());
     outputGain.setGainDecibels(apvts.getRawParameterValue(ParamID::outputGain)->load());
 
-    // 超采样倍率切换（宿主未 re-prepare 时的安全兜底）；0=Off
-    const int osIndex = juce::jlimit(0, 4, (int) oversamplingParam->load());
+    // 超采样倍率切换（宿主未 re-prepare 时的安全兜底）；0..3 = 2x/4x/8x/16x
+    const int osIndex = juce::jlimit(0, 3, (int) oversamplingParam->load());
     if (osIndex != currentOsIndex.load())
     {
         currentOsIndex.store(osIndex);
-        if (osIndex == 0)
-        {
-            dspSampleRate.store(lastSampleRate);
-            setLatencySamples(0);
-        }
-        else
-        {
-            dspSampleRate.store(lastSampleRate * (double) (1 << osExponents[osIndex - 1]));
-            setLatencySamples(oversamplers[osIndex - 1]->getLatencyInSamples());
-            oversamplers[osIndex - 1]->reset();
-        }
+        dspSampleRate.store(lastSampleRate * (double) (1 << osExponents[osIndex]));
+        setLatencySamples(oversamplers[osIndex]->getLatencyInSamples());
+        oversamplers[osIndex]->reset();
     }
 
     // 链路：In → Headroom → [DeEss→EQ→Comp→Sat→Edge（可超采样）] → Out
@@ -188,19 +172,8 @@ void MoonVocProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::Midi
 
     headroomGain.process(juce::dsp::ProcessContextReplacing<float>(block));
 
-    if (currentOsIndex.load() == 0)
     {
-        // Off：链直接按宿主采样率处理
-        auto ctx = juce::dsp::ProcessContextReplacing<float>(block);
-        deEsser.process(ctx);
-        eq.process(ctx);
-        comp.process(ctx);
-        sat.process(ctx);
-        edge.process(ctx);
-    }
-    else
-    {
-        auto* os = oversamplers[currentOsIndex.load() - 1].get();
+        auto* os = oversamplers[currentOsIndex.load()].get();
         auto osBlock = os->processSamplesUp(block);
         auto osContext = juce::dsp::ProcessContextReplacing<float>(osBlock);
         deEsser.process(osContext);

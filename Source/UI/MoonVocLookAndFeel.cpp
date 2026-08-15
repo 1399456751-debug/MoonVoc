@@ -211,6 +211,13 @@ void MoonVocLookAndFeel::drawComboBox(juce::Graphics& g, int w, int h, bool,
     g.setColour(cb.isMouseOver() ? Theme::accent.withAlpha(0.8f) : Theme::panelEdge);
     g.drawRoundedRectangle(r, 4.0f, 1.0f);
 
+    // 当前选中文字（左侧居中，箭头右侧不重叠）
+    g.setFont(Theme::fontLabel(13.0f));
+    g.setColour(Theme::textMain);
+    g.drawText(cb.getText(),
+               juce::Rectangle<float>(4.0f, 0.0f, (float) (w - bw) - 4.0f, (float) h),
+               juce::Justification::centred);
+
     // 箭头
     juce::Path arrow;
     const float cx = (float) bx + bw * 0.5f, cy = (float) by + bh * 0.5f;

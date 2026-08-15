@@ -537,7 +537,8 @@ int main()
         TRACE("mono check: %s\n", ok ? "OK" : "BAD");
     }
 
-    // 默认全 0 严格直通：oversampling=0 时输出必须逐样本等于输入（float 精度内）
+    // 默认全 0 透明直通（能量守恒）：oversampling=0（最小档 2x）时输出/输入 RMS 比 ≈ 1
+    // （无 Off 档后 FIR 半带引入固定延迟，逐样本对齐已不适用，改能量验证）
     {
         processor.prepareToPlay(48000.0, 512);
         const auto& apvts = processor.apvts;
@@ -558,7 +559,7 @@ int main()
                                    + 0.05f * (rng.nextFloat() * 2.0f - 1.0f)
                                    + (n < 8 ? 0.4f : 0.0f));
 
-        float maxErr = 0.0f;
+        double inSq = 0.0, outSq = 0.0;
         for (int b = 0; b < 50; ++b)
         {
             for (int c = 0; c < 2; ++c)         // JUCE9 API：逐通道复制，每块从 ref 重置，隔离链内部状态
@@ -566,10 +567,16 @@ int main()
             processor.processBlock(buf, midi);
             for (int c = 0; c < 2; ++c)
                 for (int n = 0; n < 512; ++n)
-                    maxErr = jmax(maxErr, std::abs(buf.getSample(c, n) - ref.getSample(c, n)));
+                {
+                    inSq  += (double) ref.getSample(c, n) * ref.getSample(c, n);
+                    outSq += (double) buf.getSample(c, n) * buf.getSample(c, n);
+                }
         }
-        TRACE("bypass check: maxErr=%.2e %s\n", maxErr, maxErr < 1.0e-6f ? "OK" : "BAD");
-        if (! (maxErr < 1.0e-6f))
+        const float ratio = (float) std::sqrt(outSq / inSq);
+        // 2x FIR 半带通带纹波量级 ~0.15%（0.9985），容差 1%
+        TRACE("bypass check: out/in RMS ratio=%.5f %s\n", ratio,
+              std::abs(ratio - 1.0f) < 1.0e-2f ? "OK" : "BAD");
+        if (! (std::abs(ratio - 1.0f) < 1.0e-2f))
             return 1;
     }
 
@@ -864,7 +871,7 @@ int main()
     // 16x 下默认链频响平直检查：100Hz~15kHz 输出/输入比值 ≈ 1.0（±0.03）
     {
         processor.prepareToPlay(48000.0, 512);
-        *apvts.getRawParameterValue("oversampling") = 4.0f; // 16x
+        *apvts.getRawParameterValue("oversampling") = 3.0f; // 16x（index 0..3 = 2x/4x/8x/16x）
         const float freqs[] { 100.0f, 400.0f, 1000.0f, 4000.0f, 8000.0f, 15000.0f };
         bool ok = true;
         for (float f : freqs)
