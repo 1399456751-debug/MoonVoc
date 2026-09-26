@@ -16,12 +16,12 @@ jobs:
       - name: Build plugin
         run: cmake --build build --config Release --target MoonVoc_All -j 4
 
-      - name: Validate AU (auval)
+      - name: Validate AU (auval) - must pass for Logic
         run: |
           mkdir -p ~/Library/Audio/Plug-Ins/Components
           cp -R "build/MoonVoc_artefacts/Release/AU/MoonVoc.component" ~/Library/Audio/Plug-Ins/Components/
-          xattr -cr ~/Library/Audio/Plug-Ins/Components/MoonVoc.component || true
-          auval -v aufx MoVc Tujm || echo "AUVAL FAILED (Logic 可能加载不了，见日志)"
+          xattr -cr ~/Library/Audio/Plug-Ins/Components/MoonVoc.component
+          auval -v aufx MoVc Tujm
 
       - name: Package VST3 + AU + Standalone
         run: |
