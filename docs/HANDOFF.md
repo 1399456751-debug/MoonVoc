@@ -125,6 +125,8 @@ moonvoc/
   - 中文字体：Montserrat 无 CJK 字形，中文模式切系统字体（Win 候选链 Microsoft YaHei UI → YaHei → SimHei；mac PingFang SC…），`Theme::cjkFontName()` 用 `findAllTypefaceNames` 匹配
   - 宿主参数名用**固定双语**（如「混响量 Reverb」）：宿主扫描时缓存参数名，运行时改名不生效且可能破坏已存工程
 - [x] **AU 格式（Logic/GarageBand）**：CMakeLists `FORMATS VST3 AU Standalone`（Windows 构建 JUCE 自动忽略 AU，已本地验证）；AU_MAIN_TYPE 默认 kAudioUnitType_Effect 无需显式设；mac CI 加 `auval -v aufx MoVc Tujm` 验证 + 打包 .component
+  - **关键踩坑（AU 在 CI 上必做）**：Ninja/Makefiles 生成器构建的 mac bundle **默认没有签名**（Xcode 生成器才会自动签），未签名的 AU bundle 会让 auval 报 `ERROR: Cannot get Component's Name strings / Error from retrieving Component Version: -50 / FATAL ERROR: didn't find the component` → 必须先 `codesign --force --sign - <bundle>/Contents/MacOS/MoonVoc` 再 `codesign --force --sign - <bundle>`（AU/VST3/App 三个都要），之后 auval 通过（已实测：不签 FAIL、签了 PASS）
+  - **教训**：验证步骤不要加 `|| echo` 兜底 —— 第一次就是这样把 auval FAIL 吞掉了，白跑一轮
 - [x] **验证**：headless EXIT=0（31 项，含混响尾音/旁通回归）、UiSnapshot 4 状态（中文/中文大字/英文/200%）FAIL=0 且逐张肉眼确认
 - [x] **打包**：`dist/MoonVoc_0.7.0_Win64.zip`（VST3+Standalone+新说明）；mac 由 CI 出 `MoonVoc_0.7.0_mac.zip`（VST3+AU+Standalone+README_Mac）
 
