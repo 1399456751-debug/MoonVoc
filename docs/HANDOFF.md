@@ -114,6 +114,15 @@ moonvoc/
 - [x] **验证**：headless EXIT=0 全绿(31项)、UiSnapshot FAIL=0、演示态截图确认数值弧/电平/GR/指示灯/品牌渐变全部点亮
 - [ ] 待打包发布 / 更新用户测试包 / git push
 
+**2026-09-26 UI 修正 v0.6.1（用户反馈 5 项）**：
+- [x] **字体太小**：数值框覆盖 `createSliderTextBox` 设 `fontValue(15)`（原走 Label 默认字体）；标签 13→14、区标题 13→15、lock 11→12、电平/GR 12/13→13/14、下拉 13→14；`drawLabel` 下限 13→12
+- [x] **旋钮零值改 12 点**：`drawRotarySlider` 角度重写——零值固定角 0（12 点），正值顺时针到 +135°、负值逆时针到 -135°（双极全环/单向右半环）；**删除 `moonvocSingleSided` 属性与 twoSided 分支**
+- [x] **修指针/数值弧错位 bug（根因）**：旧代码指针用 `cos/sin` 数学约定（0=3 点方向），弧环用 `addCentredArc` 的 JUCE 约定（0=12 点），差 90° → 零值指针显示在 10:30、弧从别处出发。现统一 `(sin a, -cos a)`，数值弧恒从零位出发到指针
+- [x] **EQ 四旋钮改两行两列**：Thick/De-Box 上行、Clarity/Air 下行（列槽 x+24/x+168 宽 128，行 y+44/y+164），airFreqBox 在 Air 下方底部行
+- [x] **莫兰迪卡片**：Theme 新增 8 组卡片色（燕麦沙/豆沙粉/鼠尾草/雾霾蓝/焦糖杏/香芋紫/冷雾灰/米灰，底色+深色成对）；卡片体填模块浅色、描边深色 30%、区标题/竖条/数值弧/指针/悬停环全用模块深色（`setupSlider` 多传 arcColour → slider 属性 `moonvocArcColor`，LAF 读取）；卡片圆角 14→16
+- [x] **布局配套**：slider bounds 含数值框（kTbH=18，原 64×64 正好框导致旋钮实绘仅 46px）；全局卡 h 128→140 放下数值框；标准旋钮 d=64 实绘 64、hero 120 实绘 120
+- [x] **验证**：headless EXIT=0、UiSnapshot FAIL=0（EQ 行列对齐断言更新）、截图肉眼确认零值指针全在 12 点、弧从指针零位出发、Input +2 弧在右侧
+
 **待办**：
 - [ ] **AI 未做**：正式发布需 pluginval 验证（未安装）、macOS 移植（已尝试未成，见 §11）
 - [ ] 图标/安装包/签名未做

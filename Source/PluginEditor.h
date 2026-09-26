@@ -21,10 +21,10 @@ public:
 
 private:
     void timerCallback() override;
-    void setupSlider(juce::Slider& s, juce::Label& l, const juce::String& text, bool singleSided = false);
+    void setupSlider(juce::Slider& s, juce::Label& l, const juce::String& text, juce::Colour arcColour);
     void setupCombo(juce::ComboBox& c, const juce::StringArray& items);
     void setupButton(juce::ToggleButton& b, const juce::String& text);
-    void setupSectionTitle(juce::Label& l, const juce::String& text);
+    void setupSectionTitle(juce::Label& l, const juce::String& text, juce::Colour deep);
     void paintMeter(juce::Graphics& g, juce::Rectangle<int> r, float levelDb, float peakDb,
                     const juce::String& name, float grDb);
     void paintIndicator(juce::Graphics& g, juce::Rectangle<int> r);

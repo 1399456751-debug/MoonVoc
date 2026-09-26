@@ -7,6 +7,8 @@ namespace
     constexpr int kPad       = 20;   // 卡片内边距
     constexpr int kKnobHero  = 120;  // hero 旋钮直径（Compression / Edge）
     constexpr int kKnobStd   = 64;   // 标准旋钮直径
+    constexpr int kKnobGlob  = 56;   // 全局条旋钮直径
+    constexpr int kTbH       = 18;   // 旋钮下方数值框条高（含在 slider bounds 内）
 }
 
 MoonVocEditor::MoonVocEditor(MoonVocProcessor& p)
@@ -16,63 +18,63 @@ MoonVocEditor::MoonVocEditor(MoonVocProcessor& p)
     lookAndFeel = std::make_unique<MoonVocLookAndFeel>();
     setLookAndFeel(lookAndFeel.get());
 
-    setupSectionTitle(sectionGlobal,  "Global");
-    setupSectionTitle(sectionEq,      "EQ");
-    setupSectionTitle(sectionComp,    "Compressor");
-    setupSectionTitle(sectionDeEss,   "De-Esser");
-    setupSectionTitle(sectionSat,     "Saturate");
-    setupSectionTitle(sectionEdge,    "Edge");
-    setupSectionTitle(sectionMonitor, "Monitor");
-    setupSectionTitle(sectionOs,      "Engine");
+    setupSectionTitle(sectionGlobal,  "Global",     Theme::cardGlobalDeep);
+    setupSectionTitle(sectionEq,      "EQ",         Theme::cardEqDeep);
+    setupSectionTitle(sectionComp,    "Compressor", Theme::cardCompDeep);
+    setupSectionTitle(sectionDeEss,   "De-Esser",   Theme::cardDeEssDeep);
+    setupSectionTitle(sectionSat,     "Saturate",   Theme::cardSatDeep);
+    setupSectionTitle(sectionEdge,    "Edge",       Theme::cardEdgeDeep);
+    setupSectionTitle(sectionMonitor, "Monitor",    Theme::cardMonitorDeep);
+    setupSectionTitle(sectionOs,      "Engine",     Theme::cardEngineDeep);
 
     // 全局
-    setupSlider(inputGainSlider,  inputGainLabel,  "Input");
-    setupSlider(headroomSlider,   headroomLabel,   "Headroom");
-    setupSlider(outputGainSlider, outputGainLabel, "Output");
+    setupSlider(inputGainSlider,  inputGainLabel,  "Input",    Theme::cardGlobalDeep);
+    setupSlider(headroomSlider,   headroomLabel,   "Headroom", Theme::cardGlobalDeep);
+    setupSlider(outputGainSlider, outputGainLabel, "Output",   Theme::cardGlobalDeep);
     setupCombo(oversamplingBox, { "2x", "4x", "8x", "16x" });
     oversamplingLabel.setText("Oversampling", juce::dontSendNotification);
     oversamplingLabel.setJustificationType(juce::Justification::centredRight);
     oversamplingLabel.setColour(juce::Label::textColourId, Theme::textDim);
-    oversamplingLabel.setFont(Theme::fontLabel(12.0f));
+    oversamplingLabel.setFont(Theme::fontLabel(14.0f));
     addAndMakeVisible(oversamplingLabel);
 
     // EQ
-    setupSlider(boostSlider,   boostLabel,   "Thick");
-    setupSlider(deboxSlider,   deboxLabel,   "De-Box");
-    setupSlider(claritySlider, clarityLabel, "Clarity");
-    setupSlider(airSlider,     airLabel,     "Air", true);
+    setupSlider(boostSlider,   boostLabel,   "Thick",   Theme::cardEqDeep);
+    setupSlider(deboxSlider,   deboxLabel,   "De-Box",  Theme::cardEqDeep);
+    setupSlider(claritySlider, clarityLabel, "Clarity", Theme::cardEqDeep);
+    setupSlider(airSlider,     airLabel,     "Air",     Theme::cardEqDeep);
     deboxFreqLabel.setJustificationType(juce::Justification::centred);
-    deboxFreqLabel.setColour(juce::Label::textColourId, Theme::accent);
-    deboxFreqLabel.setFont(Theme::fontLabel(11.0f));
+    deboxFreqLabel.setColour(juce::Label::textColourId, Theme::cardEqDeep.darker(0.10f));
+    deboxFreqLabel.setFont(Theme::fontLabel(12.0f));
     addAndMakeVisible(deboxFreqLabel);
     clarityFreqLabel.setJustificationType(juce::Justification::centred);
-    clarityFreqLabel.setColour(juce::Label::textColourId, Theme::accent);
-    clarityFreqLabel.setFont(Theme::fontLabel(11.0f));
+    clarityFreqLabel.setColour(juce::Label::textColourId, Theme::cardEqDeep.darker(0.10f));
+    clarityFreqLabel.setFont(Theme::fontLabel(12.0f));
     addAndMakeVisible(clarityFreqLabel);
     thickFreqLabel.setJustificationType(juce::Justification::centred);
-    thickFreqLabel.setColour(juce::Label::textColourId, Theme::accent);
-    thickFreqLabel.setFont(Theme::fontLabel(11.0f));
+    thickFreqLabel.setColour(juce::Label::textColourId, Theme::cardEqDeep.darker(0.10f));
+    thickFreqLabel.setFont(Theme::fontLabel(12.0f));
     addAndMakeVisible(thickFreqLabel);
     setupCombo(airFreqBox, { "16 kHz", "22 kHz" });
 
     // 压缩
     setupCombo(compModeBox, { "Pop", "Rap" });
-    setupSlider(compAmountSlider, compAmountLabel, "Compression", true);
-    setupSlider(compMakeupSlider, compMakeupLabel, "Makeup", true);
+    setupSlider(compAmountSlider, compAmountLabel, "Compression", Theme::cardCompDeep);
+    setupSlider(compMakeupSlider, compMakeupLabel, "Makeup",      Theme::cardCompDeep);
 
     // 去齿音
-    setupSlider(dsLowSlider,  dsLowLabel,  "3-5k", true);
-    setupSlider(dsHighSlider, dsHighLabel, "5k+", true);
+    setupSlider(dsLowSlider,  dsLowLabel,  "3-5k", Theme::cardDeEssDeep);
+    setupSlider(dsHighSlider, dsHighLabel, "5k+",  Theme::cardDeEssDeep);
 
     // 染色
     const juce::StringArray satTypes{ "Off", "FET", "Tube", "Tape", "Optical", "Germanium" };
     setupCombo(satTypeABox, satTypes);
-    setupSlider(satAmountASlider, satAmountALabel, "Drive A", true);
+    setupSlider(satAmountASlider, satAmountALabel, "Drive A", Theme::cardSatDeep);
     setupCombo(satTypeBBox, satTypes);
-    setupSlider(satAmountBSlider, satAmountBLabel, "Drive B", true);
+    setupSlider(satAmountBSlider, satAmountBLabel, "Drive B", Theme::cardSatDeep);
 
     // 瞬态
-    setupSlider(edgeSlider, edgeLabel, "Edge");
+    setupSlider(edgeSlider, edgeLabel, "Edge", Theme::cardEdgeDeep);
 
     // 全局
     oversamplingAtt = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(processorRef.apvts, "oversampling", oversamplingBox);
@@ -109,18 +111,18 @@ MoonVocEditor::MoonVocEditor(MoonVocProcessor& p)
     startTimerHz(10);
 }
 
-void MoonVocEditor::setupSlider(juce::Slider& s, juce::Label& l, const juce::String& text, bool singleSided)
+void MoonVocEditor::setupSlider(juce::Slider& s, juce::Label& l, const juce::String& text, juce::Colour arcColour)
 {
     s.setSliderStyle(juce::Slider::RotaryVerticalDrag);
-    s.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 72, 18);
+    s.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 72, kTbH);
     s.setTextValueSuffix("");
     s.setDoubleClickReturnValue(true, s.getValue());
     s.setColour(juce::Slider::textBoxTextColourId, Theme::textMain);
     s.setColour(juce::Slider::textBoxBackgroundColourId, juce::Colours::transparentBlack);
     s.setColour(juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
-    s.setColour(juce::Slider::textBoxHighlightColourId, Theme::accent.withAlpha(0.25f));
-    // 单向增益旋钮：0 值指针在 7 点方向；正负旋钮 0 值在 12 点方向
-    s.getProperties().set("moonvocSingleSided", singleSided);
+    s.setColour(juce::Slider::textBoxHighlightColourId, arcColour.withAlpha(0.25f));
+    // 模块主题色：LAF 画数值弧/指针/轨道环时读取
+    s.getProperties().set("moonvocArcColor", (juce::int64) arcColour.getARGB());
     addAndMakeVisible(s);
 
     l.setText(text, juce::dontSendNotification);
@@ -146,12 +148,12 @@ void MoonVocEditor::setupButton(juce::ToggleButton& b, const juce::String& text)
     addAndMakeVisible(b);
 }
 
-void MoonVocEditor::setupSectionTitle(juce::Label& l, const juce::String& text)
+void MoonVocEditor::setupSectionTitle(juce::Label& l, const juce::String& text, juce::Colour deep)
 {
     l.setText(text.toUpperCase(), juce::dontSendNotification);
     l.setJustificationType(juce::Justification::centredLeft);
-    l.setColour(juce::Label::textColourId, Theme::textDim.withAlpha(0.95f));
-    l.setFont(Theme::fontSection(13.0f));
+    l.setColour(juce::Label::textColourId, deep.darker(0.25f));
+    l.setFont(Theme::fontSection(15.0f));
     addAndMakeVisible(l);
 }
 
@@ -281,17 +283,18 @@ void MoonVocEditor::dumpLayout() const
     owned(cardMonitor, "grDeessRect", grDeessRect);
     owned(cardOs, "oversamplingBox", oversamplingBox.getBounds());
 
-    // 几何专项
-    check(std::abs(deboxSlider.getBounds().getCentreX() - boostSlider.getBounds().getCentreX()
-                 - (claritySlider.getBounds().getCentreX() - deboxSlider.getBounds().getCentreX())) <= 1,
-          "EQ knobs evenly spaced");
-    check(boostSlider.getBounds().getCentreY() == airSlider.getBounds().getCentreY(), "EQ knobs same y");
+    // 几何专项：EQ 两行两列（Thick/De-Box 上行，Clarity/Air 下行）
+    check(boostSlider.getY() == deboxSlider.getY(), "EQ row1 same y");
+    check(claritySlider.getY() == airSlider.getY(), "EQ row2 same y");
+    check(claritySlider.getY() > boostSlider.getY(), "EQ row2 below row1");
+    check(boostSlider.getBounds().getCentreX() == claritySlider.getBounds().getCentreX(), "EQ col1 aligned");
+    check(deboxSlider.getBounds().getCentreX() == airSlider.getBounds().getCentreX(), "EQ col2 aligned");
     check(std::abs(airFreqBox.getBounds().getCentreX() - airSlider.getBounds().getCentreX()) <= 1,
           "airFreq centred under air");
-    check(compAmountSlider.getBounds().getWidth() == compAmountSlider.getBounds().getHeight()
-          && compAmountSlider.getBounds().getWidth() == kKnobHero, "comp hero 120 sq");
-    check(edgeSlider.getBounds().getWidth() == edgeSlider.getBounds().getHeight()
-          && edgeSlider.getBounds().getWidth() == kKnobHero, "edge hero 120 sq");
+    check(compAmountSlider.getBounds().getWidth() == kKnobHero
+          && compAmountSlider.getBounds().getHeight() == kKnobHero + kTbH, "comp hero 120+tb");
+    check(edgeSlider.getBounds().getWidth() == kKnobHero
+          && edgeSlider.getBounds().getHeight() == kKnobHero + kTbH, "edge hero 120+tb");
     check(std::abs(satTypeABox.getBounds().getCentreX() - satAmountASlider.getBounds().getCentreX()) <= 1,
           "satA aligned");
     check(std::abs(satTypeBBox.getBounds().getCentreX() - satAmountBSlider.getBounds().getCentreX()) <= 1,
@@ -308,9 +311,9 @@ void MoonVocEditor::dumpLayout() const
 void MoonVocEditor::paintMeter(juce::Graphics& g, juce::Rectangle<int> r, float levelDb,
                                float peakDb, const juce::String& name, float)
 {
-    g.setFont(Theme::fontLabel(12.0f));
+    g.setFont(Theme::fontLabel(13.0f));
     g.setColour(Theme::textDim);
-    g.drawText(name, juce::Rectangle<int>(r.getX() - 44, r.getY(), 40, r.getHeight()),
+    g.drawText(name, juce::Rectangle<int>(r.getX() - 52, r.getY(), 48, r.getHeight()),
                juce::Justification::centredRight);
 
     // 圆角槽
@@ -341,10 +344,10 @@ void MoonVocEditor::paintMeter(juce::Graphics& g, juce::Rectangle<int> r, float 
     g.fillRect((float) peakX, (float) r.getY(), 1.5f, (float) r.getHeight());
 
     // 数值
-    g.setFont(Theme::fontValue(13.0f));
+    g.setFont(Theme::fontValue(14.0f));
     g.setColour(Theme::textMain);
     g.drawText(juce::String(levelDb, 1) + " dB",
-               juce::Rectangle<int>(r.getRight() + 8, r.getY() - 1, 60, r.getHeight() + 2),
+               juce::Rectangle<int>(r.getRight() + 8, r.getY() - 1, 64, r.getHeight() + 2),
                juce::Justification::centredLeft);
 }
 
@@ -352,9 +355,9 @@ void MoonVocEditor::paintMeter(juce::Graphics& g, juce::Rectangle<int> r, float 
 void MoonVocEditor::paintGrBar(juce::Graphics& g, juce::Rectangle<int> r, float grDb,
                                const juce::String& name, juce::Colour col)
 {
-    g.setFont(Theme::fontLabel(12.0f));
+    g.setFont(Theme::fontLabel(13.0f));
     g.setColour(Theme::textDim);
-    g.drawText(name, juce::Rectangle<int>(r.getX() - 44, r.getY(), 40, r.getHeight()),
+    g.drawText(name, juce::Rectangle<int>(r.getX() - 52, r.getY(), 48, r.getHeight()),
                juce::Justification::centredRight);
 
     g.setColour(Theme::track);
@@ -372,10 +375,10 @@ void MoonVocEditor::paintGrBar(juce::Graphics& g, juce::Rectangle<int> r, float 
         g.fillRect(r.getRight() - w, r.getY(), w, r.getHeight());
     }
 
-    g.setFont(Theme::fontValue(13.0f));
+    g.setFont(Theme::fontValue(14.0f));
     g.setColour(Theme::textMain);
     g.drawText(juce::String(grDb, 1) + " dB",
-               juce::Rectangle<int>(r.getRight() + 8, r.getY() - 1, 60, r.getHeight() + 2),
+               juce::Rectangle<int>(r.getRight() + 8, r.getY() - 1, 64, r.getHeight() + 2),
                juce::Justification::centredLeft);
 }
 
@@ -413,7 +416,7 @@ void MoonVocEditor::paintIndicator(juce::Graphics& g, juce::Rectangle<int> r)
     const float cd = rf.getWidth() * 0.32f;
     g.fillEllipse(rf.getCentreX() - cd * 0.5f, rf.getCentreY() - cd * 0.5f, cd, cd);
 
-    g.setFont(Theme::fontLabel(11.0f));
+    g.setFont(Theme::fontLabel(12.0f));
     g.setColour(Theme::textDim);
     g.drawText("LEVEL", juce::Rectangle<int>(r.getX() - 4, r.getY() + r.getHeight() + 3,
                                              r.getWidth() + 8, 14),
@@ -440,56 +443,56 @@ void MoonVocEditor::paint(juce::Graphics& g)
         g.strokePath(arc, juce::PathStrokeType(40.0f));
     }
 
-    // 卡片：投影 + 白底圆角 + 描边 + 顶部内高光
-    auto drawCard = [&](const juce::Rectangle<int>& r)
+    // 卡片：投影 + 莫兰迪底色圆角 + 模块色淡描边 + 顶部内高光
+    auto drawCard = [&](const juce::Rectangle<int>& r, juce::Colour bgC, juce::Colour deepC)
     {
         if (r.isEmpty())
             return;
         const auto rf = r.toFloat();
         // 投影（向下偏 3、向外扩 2）
         g.setColour(Theme::shadow);
-        g.fillRoundedRectangle(rf.translated(0.0f, 3.0f).expanded(2.0f), 16.0f);
+        g.fillRoundedRectangle(rf.translated(0.0f, 3.0f).expanded(2.0f), 18.0f);
         // 卡片体
-        g.setColour(Theme::panel);
-        g.fillRoundedRectangle(rf, 14.0f);
-        // 描边
-        g.setColour(Theme::panelEdge);
-        g.drawRoundedRectangle(rf, 14.0f, 1.0f);
+        g.setColour(bgC);
+        g.fillRoundedRectangle(rf, 16.0f);
+        // 描边（模块深色 30%）
+        g.setColour(deepC.withAlpha(0.30f));
+        g.drawRoundedRectangle(rf, 16.0f, 1.2f);
         // 顶部内高光线
-        g.setColour(juce::Colours::white.withAlpha(0.40f));
-        g.drawHorizontalLine(r.getY() + 1, (float) (r.getX() + 12), (float) (r.getRight() - 12));
+        g.setColour(juce::Colours::white.withAlpha(0.35f));
+        g.drawHorizontalLine(r.getY() + 1, (float) (r.getX() + 14), (float) (r.getRight() - 14));
     };
-    drawCard(cardGlobal);
-    drawCard(cardDeEss);
-    drawCard(cardEq);
-    drawCard(cardComp);
-    drawCard(cardSat);
-    drawCard(cardEdge);
-    drawCard(cardMonitor);
-    drawCard(cardOs);
+    drawCard(cardGlobal,  Theme::cardGlobal,  Theme::cardGlobalDeep);
+    drawCard(cardDeEss,   Theme::cardDeEss,   Theme::cardDeEssDeep);
+    drawCard(cardEq,      Theme::cardEq,      Theme::cardEqDeep);
+    drawCard(cardComp,    Theme::cardComp,    Theme::cardCompDeep);
+    drawCard(cardSat,     Theme::cardSat,     Theme::cardSatDeep);
+    drawCard(cardEdge,    Theme::cardEdge,    Theme::cardEdgeDeep);
+    drawCard(cardMonitor, Theme::cardMonitor, Theme::cardMonitorDeep);
+    drawCard(cardOs,      Theme::cardEngine,  Theme::cardEngineDeep);
 
-    // 区标题左侧 teal 小竖条
-    auto drawSectionBar = [&](const juce::Label& l)
+    // 区标题左侧模块色小竖条
+    auto drawSectionBar = [&](const juce::Label& l, juce::Colour c)
     {
         auto r = l.getBounds();
         if (r.isEmpty())
             return;
-        g.setColour(Theme::accent);
-        g.fillRoundedRectangle((float) (r.getX() - 8), (float) (r.getCentreY() - 7), 3.0f, 14.0f, 1.5f);
+        g.setColour(c);
+        g.fillRoundedRectangle((float) (r.getX() - 8), (float) (r.getCentreY() - 8), 3.0f, 16.0f, 1.5f);
     };
-    drawSectionBar(sectionGlobal);
-    drawSectionBar(sectionEq);
-    drawSectionBar(sectionComp);
-    drawSectionBar(sectionDeEss);
-    drawSectionBar(sectionSat);
-    drawSectionBar(sectionEdge);
-    drawSectionBar(sectionMonitor);
-    drawSectionBar(sectionOs);
+    drawSectionBar(sectionGlobal,  Theme::cardGlobalDeep);
+    drawSectionBar(sectionEq,      Theme::cardEqDeep);
+    drawSectionBar(sectionComp,    Theme::cardCompDeep);
+    drawSectionBar(sectionDeEss,   Theme::cardDeEssDeep);
+    drawSectionBar(sectionSat,     Theme::cardSatDeep);
+    drawSectionBar(sectionEdge,    Theme::cardEdgeDeep);
+    drawSectionBar(sectionMonitor, Theme::cardMonitorDeep);
+    drawSectionBar(sectionOs,      Theme::cardEngineDeep);
 
     // 品牌：顶部全局条内左侧 MoonVoc（青→珊瑚渐变）+ TUJZMIXING
     {
         const auto brand = cardGlobal.reduced(24, 0);
-        const auto titleBox = brand.withWidth(220).withHeight(34).withY(cardGlobal.getY() + 40);
+        const auto titleBox = brand.withWidth(220).withHeight(34).withY(cardGlobal.getY() + 48);
         auto titleFont = Theme::fontTitle(30.0f);
         juce::ColourGradient titleGrad(Theme::accent, (float) titleBox.getX(), 0.0f,
                                        Theme::accent2, (float) titleBox.getRight(), 0.0f, false);
@@ -497,7 +500,7 @@ void MoonVocEditor::paint(juce::Graphics& g)
         g.setGradientFill(titleGrad);
         g.drawText("MoonVoc", titleBox, juce::Justification::centredLeft);
         const auto subBox = titleBox.translated(0.0f, 32.0f).withHeight(16);
-        g.setFont(Theme::fontLabel(11.0f));
+        g.setFont(Theme::fontLabel(12.5f));
         g.setColour(Theme::textDim);
         g.drawText("T U J Z M I X I N G", subBox, juce::Justification::centredLeft);
     }
@@ -513,7 +516,7 @@ void MoonVocEditor::paint(juce::Graphics& g)
 
     // 页脚 LOGO（右下角，纯文本无辉光）
     auto logoBox = getLocalBounds().removeFromBottom(20);
-    auto font = Theme::fontSection(14.0f);
+    auto font = Theme::fontSection(15.0f);
     const int dspW = juce::GlyphArrangement::getStringWidthInt(font, "-DSP");
     auto dspBox = logoBox.removeFromRight(dspW);
     auto tjmBox = logoBox.removeFromRight(110);
@@ -528,25 +531,24 @@ void MoonVocEditor::resized()
 {
     renderBackground();
 
-    // 顶部全局条卡片（y=16, h=128）
-    cardGlobal = juce::Rectangle<int>(kEdge, kEdge, getWidth() - kEdge * 2, 128);
+    // 顶部全局条卡片（y=16, h=140）
+    cardGlobal = juce::Rectangle<int>(kEdge, kEdge, getWidth() - kEdge * 2, 140);
     {
-        sectionGlobal.setBounds(cardGlobal.getX() + 236, cardGlobal.getY() + 16, 90, 18);
-        // 3 个全局旋钮（品牌区 220 + 标题区之后），d=64，标签在上
-        const int knobY = cardGlobal.getY() + 42;
-        int kx = cardGlobal.getX() + 236;
+        sectionGlobal.setBounds(cardGlobal.getX() + 244, cardGlobal.getY() + 16, 100, 20);
+        // 3 个全局旋钮（品牌区 220 + 标题区之后），d=56，标签在上、数值在下
+        int kx = cardGlobal.getX() + 244;
         auto gslot = [&](juce::Slider& s, juce::Label& l)
         {
-            auto slot = juce::Rectangle<int>(kx, knobY, 120, cardGlobal.getBottom() - knobY - 12);
-            l.setBounds(slot.removeFromTop(16));
-            s.setBounds(slot.withSizeKeepingCentre(kKnobStd, kKnobStd));
-            kx += 120;
+            auto slot = juce::Rectangle<int>(kx, cardGlobal.getY() + 40, 116, 92);
+            l.setBounds(slot.removeFromTop(18));
+            s.setBounds(slot.withSizeKeepingCentre(72, kKnobGlob + kTbH));
+            kx += 116;
         };
         gslot(inputGainSlider,  inputGainLabel);
         gslot(headroomSlider,   headroomLabel);
         gslot(outputGainSlider, outputGainLabel);
-        // 指示灯：卡片右端 44×44
-        indicatorRect = juce::Rectangle<int>(cardGlobal.getRight() - 68, cardGlobal.getY() + 44, 40, 40);
+        // 指示灯：卡片右端 40×40
+        indicatorRect = juce::Rectangle<int>(cardGlobal.getRight() - 68, cardGlobal.getY() + 50, 40, 40);
     }
 
     // 信号链卡片行（y=172, h=320，5 卡横排）
@@ -564,101 +566,100 @@ void MoonVocEditor::resized()
     cardSat   = makeCard(260);
     cardEdge  = makeCard(152);
 
-    // cardDeEss：2 旋钮并排（垂直居中）
+    // cardDeEss：2 旋钮并排（垂直居中偏下，平衡顶部标题）
     {
-        sectionDeEss.setBounds(cardDeEss.getX() + kPad, cardDeEss.getY() + 16, 110, 18);
-        const int kY = cardDeEss.getCentreY() - 52;
+        sectionDeEss.setBounds(cardDeEss.getX() + kPad, cardDeEss.getY() + 16, 110, 20);
+        const int slotH = 18 + kKnobStd + kTbH; // 100
+        const int kY = cardDeEss.getCentreY() - slotH / 2 + 10;
         auto dslot = [&](juce::Slider& s, juce::Label& l, int x)
         {
-            auto slot = juce::Rectangle<int>(x, kY, 76, 120);
-            l.setBounds(slot.removeFromTop(16));
-            s.setBounds(slot.withSizeKeepingCentre(kKnobStd, kKnobStd));
+            auto slot = juce::Rectangle<int>(x, kY, 72, slotH);
+            l.setBounds(slot.removeFromTop(18));
+            s.setBounds(slot.withSizeKeepingCentre(72, kKnobStd + kTbH));
         };
-        dslot(dsLowSlider,  dsLowLabel,  cardDeEss.getX() + 16);
-        dslot(dsHighSlider, dsHighLabel, cardDeEss.getX() + 92);
+        dslot(dsLowSlider,  dsLowLabel,  cardDeEss.getX() + 14);
+        dslot(dsHighSlider, dsHighLabel, cardDeEss.getX() + 94);
     }
 
-    // cardEq：4 旋钮等距 + lock 标签 + airFreqBox（旋钮群上移，下拉框独立底部行）
+    // cardEq：两行两列（Thick/De-Box 上行，Clarity/Air 下行）+ lock 标签 + airFreqBox
     {
-        sectionEq.setBounds(cardEq.getX() + kPad, cardEq.getY() + 16, 60, 18);
-        const int kY = cardEq.getY() + 56;
-        const int sw = 76;
-        int ex = cardEq.getX() + 16;
-        auto eslot = [&](juce::Slider& s, juce::Label& l, juce::Label* lock)
+        sectionEq.setBounds(cardEq.getX() + kPad, cardEq.getY() + 16, 60, 20);
+        const int colW  = 128;
+        const int col1X = cardEq.getX() + 24, col2X = cardEq.getX() + 168;
+        const int row1Y = cardEq.getY() + 44, row2Y = cardEq.getY() + 164;
+        auto eslot = [&](juce::Slider& s, juce::Label& l, juce::Label* lock, int sx, int sy)
         {
-            auto slot = juce::Rectangle<int>(ex, kY, sw, 130);
+            auto slot = juce::Rectangle<int>(sx, sy, colW, 111);
             l.setBounds(slot.removeFromTop(16));
-            auto lockArea = slot.removeFromTop(14);
+            auto lockArea = slot.removeFromTop(13);
             if (lock != nullptr)
                 lock->setBounds(lockArea);
-            s.setBounds(slot.withSizeKeepingCentre(kKnobStd, kKnobStd));
-            ex += sw;
+            s.setBounds(slot.withSizeKeepingCentre(76, kKnobStd + kTbH));
         };
-        eslot(boostSlider,   boostLabel,   &thickFreqLabel);
-        eslot(deboxSlider,   deboxLabel,   &deboxFreqLabel);
-        eslot(claritySlider, clarityLabel, &clarityFreqLabel);
-        eslot(airSlider,     airLabel,     nullptr);
-        // Air 频点选择：Air 旋钮下方独立底部行（避开数值框）
-        airFreqBox.setBounds(juce::Rectangle<int>(airSlider.getBounds().getCentreX() - 36,
-                                                  cardEq.getY() + 200, 72, 22));
+        eslot(boostSlider,   boostLabel,   &thickFreqLabel,   col1X, row1Y);
+        eslot(deboxSlider,   deboxLabel,   &deboxFreqLabel,   col2X, row1Y);
+        eslot(claritySlider, clarityLabel, &clarityFreqLabel, col1X, row2Y);
+        eslot(airSlider,     airLabel,     nullptr,           col2X, row2Y);
+        // Air 频点选择：Air 旋钮下方底部行
+        airFreqBox.setBounds(juce::Rectangle<int>(airSlider.getBounds().getCentreX() - 42,
+                                                  cardEq.getY() + 282, 84, 22));
     }
 
-    // cardComp：Style 下拉 + Compression hero + Makeup（垂直居中）
+    // cardComp：Style 下拉 + Compression hero + Makeup（Makeup 旋钮中心对齐 hero）
     {
-        sectionComp.setBounds(cardComp.getX() + kPad, cardComp.getY() + 16, 110, 18);
-        compModeBox.setBounds(cardComp.getX() + kPad, cardComp.getY() + 46, 120, 26);
-        const int kY = cardComp.getCentreY() - 78;
-        auto heroSlot = juce::Rectangle<int>(cardComp.getX() + 20, kY, 140, 190);
-        compAmountLabel.setBounds(heroSlot.removeFromTop(16));
-        compAmountSlider.setBounds(heroSlot.withSizeKeepingCentre(kKnobHero, kKnobHero));
-        auto mkSlot = juce::Rectangle<int>(cardComp.getX() + 172, kY + 40, 84, 120);
-        compMakeupLabel.setBounds(mkSlot.removeFromTop(16));
-        compMakeupSlider.setBounds(mkSlot.withSizeKeepingCentre(kKnobStd, kKnobStd));
+        sectionComp.setBounds(cardComp.getX() + kPad, cardComp.getY() + 16, 120, 20);
+        compModeBox.setBounds(cardComp.getX() + kPad, cardComp.getY() + 44, 130, 26);
+        auto heroSlot = juce::Rectangle<int>(cardComp.getX() + 20, cardComp.getY() + 84, 140, 156);
+        compAmountLabel.setBounds(heroSlot.removeFromTop(18));
+        compAmountSlider.setBounds(heroSlot.withSizeKeepingCentre(kKnobHero, kKnobHero + kTbH));
+        auto mkSlot = juce::Rectangle<int>(cardComp.getX() + 172, cardComp.getY() + 112, 88, 100);
+        compMakeupLabel.setBounds(mkSlot.removeFromTop(18));
+        compMakeupSlider.setBounds(mkSlot.withSizeKeepingCentre(76, kKnobStd + kTbH));
     }
 
-    // cardSat：A/B 两槽竖向堆叠（垂直居中）
+    // cardSat：A/B 两槽竖向堆叠（类型下拉 → 标签 → 旋钮）
     {
-        sectionSat.setBounds(cardSat.getX() + kPad, cardSat.getY() + 16, 120, 18);
-        const int centreX = cardSat.getX() + cardSat.getWidth() / 2;
-        const int topY = cardSat.getCentreY() - 112;
+        sectionSat.setBounds(cardSat.getX() + kPad, cardSat.getY() + 16, 120, 20);
+        const int centreX = cardSat.getCentreX();
         // A 槽
-        satTypeABox.setBounds(juce::Rectangle<int>(centreX - 75, topY, 150, 24));
-        satAmountALabel.setBounds(juce::Rectangle<int>(centreX - 60, topY + 32, 120, 16));
-        satAmountASlider.setBounds(juce::Rectangle<int>(centreX - kKnobStd / 2, topY + 50, kKnobStd, kKnobStd));
+        satTypeABox.setBounds(juce::Rectangle<int>(centreX - 80, cardSat.getY() + 44, 160, 22));
+        satAmountALabel.setBounds(juce::Rectangle<int>(centreX - 64, cardSat.getY() + 72, 128, 18));
+        satAmountASlider.setBounds(juce::Rectangle<int>(centreX - 38, cardSat.getY() + 92, 76, kKnobStd + kTbH));
         // B 槽
-        satTypeBBox.setBounds(juce::Rectangle<int>(centreX - 75, topY + 118, 150, 24));
-        satAmountBLabel.setBounds(juce::Rectangle<int>(centreX - 60, topY + 150, 120, 16));
-        satAmountBSlider.setBounds(juce::Rectangle<int>(centreX - kKnobStd / 2, topY + 168, kKnobStd, kKnobStd));
+        satTypeBBox.setBounds(juce::Rectangle<int>(centreX - 80, cardSat.getY() + 178, 160, 22));
+        satAmountBLabel.setBounds(juce::Rectangle<int>(centreX - 64, cardSat.getY() + 206, 128, 18));
+        satAmountBSlider.setBounds(juce::Rectangle<int>(centreX - 38, cardSat.getY() + 226, 76, kKnobStd + kTbH));
     }
 
     // cardEdge：1 个 hero 旋钮垂直居中
     {
-        sectionEdge.setBounds(cardEdge.getX() + kPad, cardEdge.getY() + 16, 90, 18);
-        edgeLabel.setBounds(juce::Rectangle<int>(cardEdge.getX(), cardEdge.getCentreY() - 74, cardEdge.getWidth(), 16));
+        sectionEdge.setBounds(cardEdge.getX() + kPad, cardEdge.getY() + 16, 90, 20);
+        const int contentH = 18 + kKnobHero + kTbH; // 156
+        edgeLabel.setBounds(juce::Rectangle<int>(cardEdge.getX(), cardEdge.getCentreY() - contentH / 2,
+                                                 cardEdge.getWidth(), 18));
         edgeSlider.setBounds(juce::Rectangle<int>(cardEdge.getX() + (cardEdge.getWidth() - kKnobHero) / 2,
-                                                  cardEdge.getCentreY() - 56, kKnobHero, kKnobHero));
+                                                  edgeLabel.getBottom(), kKnobHero, kKnobHero + kTbH));
     }
 
-    // 底部行（y=506, h=128）：cardMonitor + cardOs
+    // 底部行（y=508, h=128）：cardMonitor + cardOs
     const int botY = chainY + chainH + kGap, botH = 128;
     cardMonitor = juce::Rectangle<int>(kEdge, botY, 800, botH);
     cardOs      = juce::Rectangle<int>(kEdge + 800 + kGap, botY, getWidth() - (kEdge + 800 + kGap) - kEdge, botH);
     {
-        sectionMonitor.setBounds(cardMonitor.getX() + kPad, cardMonitor.getY() + 12, 110, 16);
-        // 4 条横条：IN / OUT / COMP / DE-ESS（数值留右侧 66）
-        const int rowH = 14, gap = 10;
-        const int barX = cardMonitor.getX() + 66;
-        const int barW = cardMonitor.getWidth() - 66 - 74;
-        int y = cardMonitor.getY() + 36;
+        sectionMonitor.setBounds(cardMonitor.getX() + kPad, cardMonitor.getY() + 12, 120, 18);
+        // 4 条横条：IN / OUT / COMP / DE-ESS（标签左 52、数值右 70）
+        const int rowH = 16, gap = 8;
+        const int barX = cardMonitor.getX() + 78;
+        const int barW = cardMonitor.getWidth() - 78 - 78;
+        int y = cardMonitor.getY() + 34;
         meterInRect  = juce::Rectangle<int>(barX, y, barW, rowH); y += rowH + gap;
         meterOutRect = juce::Rectangle<int>(barX, y, barW, rowH); y += rowH + gap;
         grCompRect   = juce::Rectangle<int>(barX, y, barW, rowH); y += rowH + gap;
         grDeessRect  = juce::Rectangle<int>(barX, y, barW, rowH);
     }
     {
-        sectionOs.setBounds(cardOs.getX() + kPad, cardOs.getY() + 12, 110, 16);
-        const int oy = cardOs.getY() + 56;
-        oversamplingLabel.setBounds(juce::Rectangle<int>(cardOs.getX() + 44, oy, 110, 20));
-        oversamplingBox.setBounds(juce::Rectangle<int>(cardOs.getX() + 160, oy - 3, 120, 26));
+        sectionOs.setBounds(cardOs.getX() + kPad, cardOs.getY() + 12, 110, 18);
+        oversamplingLabel.setBounds(juce::Rectangle<int>(cardOs.getX() + 44, cardOs.getY() + 56, 120, 22));
+        oversamplingBox.setBounds(juce::Rectangle<int>(cardOs.getX() + 168, cardOs.getY() + 53, 130, 28));
     }
 }
