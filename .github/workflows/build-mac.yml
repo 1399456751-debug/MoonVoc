@@ -1,0 +1,8 @@
+name: build-mac
+on:
+  workflow_dispatch:
+jobs:
+  ping:
+    runs-on: macos-14
+    steps:
+      - run: echo workflow-parse-ok
