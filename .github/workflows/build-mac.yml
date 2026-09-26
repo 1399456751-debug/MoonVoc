@@ -21,6 +21,7 @@ jobs:
           mkdir -p dist/MoonVoc_mac
           cp -R "build/MoonVoc_artefacts/Release/VST3/MoonVoc.vst3" dist/MoonVoc_mac/
           cp -R "build/MoonVoc_artefacts/Release/Standalone/MoonVoc.app" dist/MoonVoc_mac/
+          cp README_Mac.txt dist/MoonVoc_mac/
           cd dist && ditto -c -k MoonVoc_mac MoonVoc_0.6.1_mac.zip
 
       - uses: actions/upload-artifact@v4
