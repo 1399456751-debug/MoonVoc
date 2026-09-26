@@ -16,31 +16,26 @@ jobs:
       - name: Build plugin
         run: cmake --build build --config Release --target MoonVoc_All -j 4
 
-      - name: Diagnose AU bundle
+      - name: Ad-hoc sign bundles (AU / VST3 / Standalone)
         run: |
-          AU="build/MoonVoc_artefacts/Release/AU/MoonVoc.component"
-          echo "=== codesign 状态 ==="
-          codesign -dv --verbose=4 "$AU" 2>&1 || true
-          codesign -dv --verbose=4 "$AU/Contents/MacOS/MoonVoc" 2>&1 || true
-          echo "=== 工厂函数符号 ==="
-          nm -gU "$AU/Contents/MacOS/MoonVoc" 2>/dev/null | grep -i factory | head
-          echo "=== plist 关键项 ==="
-          /usr/libexec/PlistBuddy -c "Print :AudioComponents:0:factoryFunction" "$AU/Contents/Info.plist" || true
-          echo "=== 二进制架构 ==="
-          lipo -info "$AU/Contents/MacOS/MoonVoc" || true
+          # CI 上 AU bundle 默认没有签名 → auval 找不到组件（error -50）。
+          # 未签名分发也必须 ad-hoc 签名，否则 macOS 拒载。签二进制 + bundle 两层。
+          for b in "build/MoonVoc_artefacts/Release/AU/MoonVoc.component" \
+                   "build/MoonVoc_artefacts/Release/VST3/MoonVoc.vst3" \
+                   "build/MoonVoc_artefacts/Release/Standalone/MoonVoc.app"; do
+            codesign --force --sign - "$b/Contents/MacOS/MoonVoc"
+            codesign --force --sign - "$b"
+            echo "--- $b"
+            codesign -dv "$b" 2>&1 | head -3 || true
+          done
 
-      - name: Force ad-hoc sign + validate AU (auval)
+      - name: Validate AU (auval) - must pass for Logic
         run: |
-          AU="build/MoonVoc_artefacts/Release/AU/MoonVoc.component"
-          codesign --force --deep --sign - "$AU" || true
           mkdir -p ~/Library/Audio/Plug-Ins/Components
           rm -rf ~/Library/Audio/Plug-Ins/Components/MoonVoc.component
-          cp -R "$AU" ~/Library/Audio/Plug-Ins/Components/
+          cp -R "build/MoonVoc_artefacts/Release/AU/MoonVoc.component" ~/Library/Audio/Plug-Ins/Components/
           xattr -cr ~/Library/Audio/Plug-Ins/Components/MoonVoc.component
           sleep 3
-          echo "=== auval -a 列表里是否有 MoonVoc ==="
-          auval -a 2>/dev/null | grep -i moonvoc || echo "(未列出)"
-          echo "=== 正式验证 ==="
           auval -v aufx MoVc Tujm
 
       - name: Package VST3 + AU + Standalone
