@@ -16,7 +16,8 @@ juce_add_plugin(MoonVoc
     COMPANY_NAME "TUJZMIXING"
     PLUGIN_MANUFACTURER_CODE Tujm
     PLUGIN_CODE MoVc
-    FORMATS VST3 Standalone
+    # AU 供 macOS 上的 Logic Pro / GarageBand 使用（Windows 构建时 JUCE 自动忽略 AU）
+    FORMATS VST3 AU Standalone
     PRODUCT_NAME "MoonVoc"
     IS_SYNTH FALSE
     NEEDS_MIDI_INPUT FALSE

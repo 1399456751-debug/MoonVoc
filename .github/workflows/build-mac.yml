@@ -16,15 +16,23 @@ jobs:
       - name: Build plugin
         run: cmake --build build --config Release --target MoonVoc_All -j 4
 
-      - name: Package VST3 + Standalone
+      - name: Validate AU (auval)
+        run: |
+          mkdir -p ~/Library/Audio/Plug-Ins/Components
+          cp -R "build/MoonVoc_artefacts/Release/AU/MoonVoc.component" ~/Library/Audio/Plug-Ins/Components/
+          xattr -cr ~/Library/Audio/Plug-Ins/Components/MoonVoc.component || true
+          auval -v aufx MoVc Tujm || echo "AUVAL FAILED (Logic 可能加载不了，见日志)"
+
+      - name: Package VST3 + AU + Standalone
         run: |
           mkdir -p dist/MoonVoc_mac
           cp -R "build/MoonVoc_artefacts/Release/VST3/MoonVoc.vst3" dist/MoonVoc_mac/
+          cp -R "build/MoonVoc_artefacts/Release/AU/MoonVoc.component" dist/MoonVoc_mac/
           cp -R "build/MoonVoc_artefacts/Release/Standalone/MoonVoc.app" dist/MoonVoc_mac/
           cp README_Mac.txt dist/MoonVoc_mac/
-          cd dist && ditto -c -k MoonVoc_mac MoonVoc_0.6.1_mac.zip
+          cd dist && ditto -c -k MoonVoc_mac MoonVoc_0.7.0_mac.zip
 
       - uses: actions/upload-artifact@v4
         with:
-          name: MoonVoc_0.6.1_mac
-          path: dist/MoonVoc_0.6.1_mac.zip
+          name: MoonVoc_0.7.0_mac
+          path: dist/MoonVoc_0.7.0_mac.zip

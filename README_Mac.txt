@@ -1,93 +1,110 @@
-MoonVoc 0.6.1 — macOS 版（测试）
+MoonVoc 0.7.0 — macOS 版（测试）
 一体化人声处理插件（TUJZMIXING 出品）
 ==================================================
 
 感谢帮忙测试 MoonVoc！这是"人声一条龙"效果器：
-去齿音 → 智能 EQ → 压缩 → 染色 → 瞬态整形，一条链全包。
+智能 EQ → 压缩 → 染色 → 瞬态整形 → 混响，一条链全包。
 默认状态完全透明（不拧旋钮 = 不改变声音）。
 
 本包内容：
-  MoonVoc.vst3   VST3 插件（在 DAW 里用，推荐）
-  MoonVoc.app    独立运行版（双击就能玩）
-  README_Mac.txt  本文件
+  MoonVoc.component   AU 插件（Logic Pro / GarageBand 用这个）
+  MoonVoc.vst3        VST3 插件（Studio One / Cubase / Reaper 等用这个）
+  MoonVoc.app         独立运行版（双击就能玩）
+  README_Mac.txt      本文件
 
 支持系统：macOS 11 及以上，Intel 和 Apple 芯片（M1/M2/M3/M4）通用
-支持宿主：Studio One / REAPER / Cubase / Nuendo / FL Studio /
-          Ableton Live 等支持 VST3 的 DAW
+支持宿主：Logic Pro（AU）/ GarageBand（AU）/ Studio One / REAPER /
+          Cubase / Nuendo / FL Studio / Ableton Live（VST3）
 
 ※ 重要：本测试版没有 Apple 签名/公证，首次打开 macOS 会拦，
-   按下面第三部分"遇到拦截怎么办"处理一次就好，完全正常。
+   按下面第三部分处理一次就好，完全正常。
 
+--------------------------------------------------
+0. 本版新功能（0.7.0）
+--------------------------------------------------
+  · 界面全面中文化（可切英文）：顶部「设置」里选 中文 / English
+  · 老年大字版：顶部「大字」开关，字更大更粗，弱视也能看清
+  · 自由缩放：拖窗口右下角，或用「设置」里的缩放下拉，100%~300%
+  · 每个模块都有「旁通」开关，一键 A/B 对比
+  · 新增混响模块（去齿音已移除）：一个大旋钮控制混响量，
+    两种模式 —— 流行 Pop / 说唱大混响 Rap，位置在链路最后
 
 --------------------------------------------------
 一、如何删除旧版本
 --------------------------------------------------
-1. 先完全退出 DAW。
+1. 先完全退出 Logic / DAW。
 2. 打开 Finder，菜单"前往" → "前往文件夹…"，输入：
-     ~/Library/Audio/Plug-Ins/VST3
-3. 找到 MoonVoc.vst3，扔到废纸篓。
-4. 如果以前把 MoonVoc.app 拷到过应用程序或桌面，也一并删掉。
+     ~/Library/Audio/Plug-Ins/
+3. 在 VST3 文件夹里删 MoonVoc.vst3；
+   在 Components 文件夹里删 MoonVoc.component。
+4. 以前拷过 MoonVoc.app 的，也一并删掉。
 5. 不删也行，安装新版直接覆盖替换即可。
-
 
 --------------------------------------------------
 二、如何安装
 --------------------------------------------------
-【VST3 插件版】—— 在 DAW 里用
+【AU 版】—— Logic Pro / GarageBand 用这个
 1. 解压本压缩包。
-2. 把 MoonVoc.vst3 复制到（当前用户插件目录）：
+2. 把 MoonVoc.component 复制到：
+     ~/Library/Audio/Plug-Ins/Components/
+   （Finder → 前往 → 前往文件夹… 粘贴上面这行；没有 Components
+     文件夹就自己新建一个。想给所有用户装就放 /Library/Audio/Plug-Ins/Components/）
+3. 打开终端（Terminal），运行一次解除隔离标记：
+     xattr -cr ~/Library/Audio/Plug-Ins/Components/MoonVoc.component
+4. 打开 Logic：
+   · 新建音频轨 → 轨道检查器 → Audio FX 槽 → Audio Units →
+     TUJZMIXING → MoonVoc
+   · 如果列表里没有：Logic → 设置 → 插件管理器 →
+     左下角"重置并重新扫描"（或重启 Logic）
+
+【VST3 版】—— Studio One / Cubase / REAPER 等用这个
+1. 把 MoonVoc.vst3 复制到：
      ~/Library/Audio/Plug-Ins/VST3/
-   （Finder → 前往 → 前往文件夹… 粘贴上面这行。
-     若没有 VST3 文件夹就自己新建一个。
-     想给所有用户装就放 /Library/Audio/Plug-Ins/VST3/）
-3. 打开终端（Terminal），运行一次下面这行解除隔离标记
-   （网络下载的文件 macOS 会加隔离，不解除 DAW 加载会被拦）：
+2. 终端运行一次：
      xattr -cr ~/Library/Audio/Plug-Ins/VST3/MoonVoc.vst3
-4. 打开 DAW 重新扫描插件，在人声轨挂 MoonVoc（厂商 TUJZMIXING）。
+3. 打开 DAW 重新扫描插件，即可在人声轨上挂载。
 
 【独立运行版】
 1. 把 MoonVoc.app 拷到"应用程序"（或任意位置）。
 2. 终端运行一次：xattr -cr /Applications/MoonVoc.app
-   （路径按你实际放的位置改）
 3. 首次打开：右键点 App → "打开" → 对话框里再点"打开"。
-   （只这一次需要右键，以后双击即可）
 4. 在 Audio/MIDI Settings 里选你的声卡/话筒即可使用。
-
 
 --------------------------------------------------
 三、遇到"无法打开/已损坏/无法验证开发者"怎么办
 --------------------------------------------------
-这些都是 Gatekeeper 对未签名软件的常规拦截，依次试：
+都是 Gatekeeper 对未签名软件的常规拦截，依次试：
 1. 终端执行 xattr -cr <插件或App路径>（见上文，最常见有效）。
-2. 系统设置 → 隐私与安全性 → 底部"仍要打开"（拦截后 1 小时内出现）。
+2. 系统设置 → 隐私与安全性 → 底部"仍要打开"。
 3. 右键点文件 → 打开 → 再点"打开"。
-
 
 --------------------------------------------------
 四、快速上手（3 分钟出声）
 --------------------------------------------------
 1. 挂在人声轨，播放人声。
-2. 看右上角 LEVEL 指示灯调 Input：
+2. 看右上角「电平」指示灯，调「输入」：
    熄灭 = 太小拧大；青蓝色呼吸闪 = 正好；红色 = 太大拧小。
-3. 按链路拧：齿音刺 → DE-ESSER；闷/糊/暗 → EQ 四段；
-   音量忽大忽小 → COMPRESSOR；要味道 → SATURATE；要冲击/柔 → EDGE。
-4. 看底部 IN / OUT 电平，用 Output 把处理前后响度拉平再 A/B。
+3. 按链路拧：闷/糊/暗 → EQ 四段；音量忽大忽小 → 压缩；
+   要味道 → 染色；要冲击/柔 → 瞬态；要空间感 → 混响。
+4. 看底部 输入/输出 电平，用「输出」把处理前后响度拉平再 A/B。
+5. 每个模块右上角有「旁通」开关，随时对比开/关效果。
 
 模块速查：
-  Thick 低频厚度 / De-Box 去盒子闷 / Clarity 清晰度 / Air 空气感(16k/22k)
-  Style 压缩风格 Pop=演唱 Rap=说唱；Compression 压缩量；Makeup 补偿
-  染色 6 种：FET硬朗/Tube温暖/Tape磁带/Optical柔顺/Germanium粗颗粒
-  EDGE 左柔右冲；Oversampling 默认 16x 最干净，嫌延迟大降到 2x/4x
+  低频厚度 / 去盒子音 / 清晰度 / 空气感(16k/22k)
+  压缩风格：流行=演唱、说唱；压缩量；补偿（压完补音量）
+  染色 6 种：关/FET硬朗/电子管温暖/磁带/光电柔顺/锗管粗颗粒
+  瞬态：左柔右冲
+  混响：旋钮=混响量，模式选 流行 / 说唱大混响
+  超采样默认 16x 最干净；嫌延迟大就降到 2x/4x
 
 旋钮：上下拖动调值；双击回默认；点数值框可直接输数字；
       指针朝正上方（12 点）= 零/关闭。
-
 
 --------------------------------------------------
 五、测试反馈（非常感谢！）
 --------------------------------------------------
 邮箱：1399456751@qq.com
 最好附上：Mac 型号（Intel/Apple 芯片）、macOS 版本、
-          DAW 名称+版本、问题描述/截图
+          DAW 名称+版本（Logic 的话写 Logic 版本号）、问题截图
 
-版本：MoonVoc 0.6.1  |  TUJZMIXING  |  2026-09-26
+版本：MoonVoc 0.7.0  |  TUJZMIXING  |  2026-09-27
