@@ -188,3 +188,13 @@ moonvoc/
 - **曾尝试**：写 `.github/workflows/build-mac.yml`（universal arm64+x86_64，clone JUCE 9.0.0 → cmake → 打包 upload-artifact），push 后 GitHub **未能解析 on/name**：`gh api .../actions/workflows/<file>` 的 `events` 为空、`name` 回退为文件路径名、`workflow_dispatch` 触发返回 422
 - **已排查**：文件无 BOM（UTF-8 无 BOM）、行尾纯 LF（CR=0）、YAML 结构标准；注释与 name 改纯 ASCII 重 push 后仍不解析。**根因未查明**
 - **建议**：下次先建一个仅含 `on: workflow_dispatch` + 一条 echo 的极简 workflow 验证 GitHub 能否解析，再逐步加内容；push tag `v*` 也可作为触发路径
+
+### 2026-09-26 macOS 构建（成功路径，已验证）
+- **极简 workflow 解析成功**：按上面"建议"先推仅含 `on: workflow_dispatch`+echo 的 `.github/workflows/build-mac.yml`（纯 ASCII、LF、无 BOM），`gh api .../actions/workflows` 立即正确解析（id 329341134，name=build-mac，state=active）。**之前失败的根因大概率是 workflow 文件自身内容问题**（具体行未定位），与编码/网络无关
+- **完整 workflow**（同一文件改内容，纯 ASCII 注释）：macos-14 → clone JUCE 9.0.0 tag 到 `$RUNNER_TEMP/JUCE` → `cmake -B build -DJUCE_ROOT= -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"`（Unix Makefiles 单配置，CMAKE_BUILD_TYPE 必须 configure 时给）→ `cmake --build build --target MoonVoc` → `ditto -c -k` 打包（保 symlink/权限，比 zip -r 稳）→ upload-artifact v4
+- **只 build MoonVoc target**：3 个测试 exe 不参与（避免 headless 代码在 clang 下的潜在问题）
+- **产物**：`MoonVoc_0.6.1_mac.zip`（VST3 + Standalone .app，universal arm64+x86_64，ad-hoc 签名）→ 本机 `gh run download` 取回后加 `使用说明_Mac.txt` 重打成测试包
+- **未签名分发说明**（已写进使用说明_Mac.txt）：`xattr -cr ~/Library/Audio/Plug-Ins/VST3/MoonVoc.vst3` 解隔离；独立版首次右键"打开"；系统设置→隐私与安全性→"仍要打开"
+- **已产出**：`dist/MoonVoc_0.6.1_mac.zip`（9.1MB，VST3 + Standalone + README_Mac.txt，ditto 打包保可执行权限；fat 二进制已验 cputype 0x1000007=x86_64 + 0x100000c=arm64 双架构）
+- **踩坑 1**：`--target MoonVoc` 只编共享库，VST3/Standalone 是独立 target，须 `--target MoonVoc_All`
+- **踩坑 2**：Windows 上重打 mac zip 会丢 +x 执行位 → 说明文档必须交给 mac runner 用 ditto 一起打包（README_Mac.txt 用 ASCII 文件名入仓，避免 runner 中文文件名风险）
