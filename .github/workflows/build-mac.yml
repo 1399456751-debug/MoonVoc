@@ -2,7 +2,28 @@ name: build-mac
 on:
   workflow_dispatch:
 jobs:
-  ping:
+  build:
     runs-on: macos-14
     steps:
-      - run: echo workflow-parse-ok
+      - uses: actions/checkout@v4
+
+      - name: Clone JUCE 9.0.0
+        run: git clone --depth 1 --branch 9.0.0 https://github.com/juce-framework/JUCE.git "$RUNNER_TEMP/JUCE"
+
+      - name: Configure (universal arm64 + x86_64)
+        run: cmake -B build -DJUCE_ROOT="$RUNNER_TEMP/JUCE" -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
+
+      - name: Build plugin
+        run: cmake --build build --config Release --target MoonVoc -j 4
+
+      - name: Package VST3 + Standalone
+        run: |
+          mkdir -p dist/MoonVoc_mac
+          cp -R "build/MoonVoc_artefacts/Release/VST3/MoonVoc.vst3" dist/MoonVoc_mac/
+          cp -R "build/MoonVoc_artefacts/Release/Standalone/MoonVoc.app" dist/MoonVoc_mac/
+          cd dist && ditto -c -k MoonVoc_mac MoonVoc_0.6.1_mac.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MoonVoc_0.6.1_mac
+          path: dist/MoonVoc_0.6.1_mac.zip
