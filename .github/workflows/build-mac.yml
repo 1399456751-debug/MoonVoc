@@ -14,7 +14,7 @@ jobs:
         run: cmake -B build -DJUCE_ROOT="$RUNNER_TEMP/JUCE" -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
 
       - name: Build plugin
-        run: cmake --build build --config Release --target MoonVoc -j 4
+        run: cmake --build build --config Release --target MoonVoc_All -j 4
 
       - name: Package VST3 + Standalone
         run: |
