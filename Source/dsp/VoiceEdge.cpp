@@ -14,6 +14,7 @@ namespace
 
 VoiceEdge::VoiceEdge(juce::AudioProcessorValueTreeState& apvts, std::atomic<double>& osSampleRate)
     : amountParam  (apvts.getRawParameterValue(ParamID::edgeAmount)),
+      bypassParam  (apvts.getRawParameterValue(ParamID::edgeBypass)),
       dspRate(&osSampleRate)
 {
 }
@@ -41,7 +42,15 @@ void VoiceEdge::process(const juce::dsp::ProcessContextReplacing<float>& context
     if (outputBlock.getNumSamples() == 0)
         return;
 
-    const float amount = jlimit(-100.0f, 100.0f, amountParam->load()) / 100.0f; // -1 ~ +1
+    // 旁通：强度平滑归零（amount=0 → 增益恒 1.0，完全透明）
+    {
+        const float bypTarget = bypassParam->load() > 0.5f ? 0.0f : 1.0f;
+        const double blockDur = (double) outputBlock.getNumSamples() / jmax(1.0, sampleRate);
+        const float bypAlpha = 1.0f - (float) std::exp(-blockDur / 0.01);
+        bypassMix += bypAlpha * (bypTarget - bypassMix);
+    }
+
+    const float amount = jlimit(-100.0f, 100.0f, amountParam->load()) / 100.0f * bypassMix; // -1 ~ +1
 
     const auto numChannels = outputBlock.getNumChannels();
     const auto numSamples = outputBlock.getNumSamples();

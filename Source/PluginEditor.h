@@ -3,8 +3,11 @@
 #include <JuceHeader.h>
 #include "PluginProcessor.h"
 #include "UI/MoonVocLookAndFeel.h"
+#include "UI/MoonVocStrings.h"
 
 // UI：水平信号链卡片式（顶部全局条 → 模块卡片横排 → 底部 Monitor + Engine）
+// 缩放实现：全部控件放在 Canvas 子容器里按设计坐标（1280×720）布局，窗口变大时对
+// Canvas 施加 transform 整体放大（JUCE 官方推荐做法，不能在 editor 自身上加 transform）
 class MoonVocEditor : public juce::AudioProcessorEditor, private juce::Timer
 {
 public:
@@ -19,12 +22,36 @@ public:
     // 测试用：手动推进一次 timer 逻辑（离线快照更新电平表/锁频标签）
     void demoTick() { timerCallback(); }
 
+    static constexpr int kDesignW = 1280; // 设计基准宽度
+    static constexpr int kDesignH = 720;  // 设计基准高度
+
 private:
     void timerCallback() override;
-    void setupSlider(juce::Slider& s, juce::Label& l, const juce::String& text, juce::Colour arcColour);
+
+    // 承载全部 UI 的子容器（设计坐标布局，transform 缩放）
+    struct Canvas : juce::Component
+    {
+        explicit Canvas(MoonVocEditor& e) : owner(e) {}
+        void paint(juce::Graphics& g) override { owner.paintCanvas(g); }
+        void resized() override { owner.layoutCanvas(); }
+        MoonVocEditor& owner;
+    };
+
+    void paintCanvas(juce::Graphics&);
+    void layoutCanvas();
+    void applyLanguage();
+    void applyFontMode();
+    void applyScaleFromParam();
+
+    // 文本注册表（语言/字体切换时统一刷新）
+    struct TextEntry { juce::Label* label; Strings::Key key; float base; int kind; }; // kind 0=label 1=section 2=title
+    std::vector<TextEntry> textEntries;
+    void registerText(juce::Label& l, Strings::Key key, float base, int kind);
+
+    void setupSlider(juce::Slider& s, juce::Label& l, Strings::Key key, juce::Colour arcColour);
     void setupCombo(juce::ComboBox& c, const juce::StringArray& items);
     void setupButton(juce::ToggleButton& b, const juce::String& text);
-    void setupSectionTitle(juce::Label& l, const juce::String& text, juce::Colour deep);
+    void setupSectionTitle(juce::Label& l, Strings::Key key, juce::Colour deep);
     void paintMeter(juce::Graphics& g, juce::Rectangle<int> r, float levelDb, float peakDb,
                     const juce::String& name, float grDb);
     void paintIndicator(juce::Graphics& g, juce::Rectangle<int> r);
@@ -34,19 +61,24 @@ private:
 
     MoonVocProcessor& processorRef;
     std::unique_ptr<MoonVocLookAndFeel> lookAndFeel;
+    Canvas canvas { *this };
+    float currentScale = 1.0f;   // 当前渲染缩放（窗口尺寸 / 设计尺寸）
+    float appliedScale = 1.0f;   // 最近一次同步过的缩放（用于区分拖拽 vs 参数驱动）
+    bool settingScale = false;   // applyScaleFromParam 内部置位，避免回写参数
+    bool currentZh = true;       // 当前语言（true=中文）
     float indicatorPhase = 0.0f; // 指示灯闪烁 + 背景呼吸相位
     float meterPeakIn = -60.0f, meterPeakOut = -60.0f; // 电平峰值保持
     juce::Image bgCache;   // 静态背景缓存（渐变 + 抽象装饰），resized 重渲染
 
     // 卡片区域（resized 记录，paint 绘制）
-    juce::Rectangle<int> cardGlobal, cardDeEss, cardEq, cardComp, cardSat, cardEdge;
+    juce::Rectangle<int> cardGlobal, cardReverb, cardEq, cardComp, cardSat, cardEdge;
     juce::Rectangle<int> cardMonitor, cardOs;
     juce::Rectangle<int> meterInRect, meterOutRect; // 电平表位置（resized 计算，paint 绘制）
     juce::Rectangle<int> indicatorRect;             // 指示灯位置（cardGlobal 右端）
-    juce::Rectangle<int> grCompRect, grDeessRect;   // GR 表（压缩/去齿音）
+    juce::Rectangle<int> grCompRect;                // GR 表（压缩）
 
     // 区段标题
-    juce::Label sectionGlobal, sectionEq, sectionComp, sectionDeEss, sectionSat, sectionEdge;
+    juce::Label sectionGlobal, sectionEq, sectionComp, sectionReverb, sectionSat, sectionEdge;
     juce::Label sectionMonitor, sectionOs;
 
     // 全局
@@ -67,9 +99,10 @@ private:
     juce::Slider compAmountSlider, compMakeupSlider;
     juce::Label compAmountLabel, compMakeupLabel;
 
-    // 去齿音
-    juce::Slider dsLowSlider, dsHighSlider;
-    juce::Label dsLowLabel, dsHighLabel;
+    // 混响（链路最后）
+    juce::Slider reverbSlider;
+    juce::Label reverbLabel;
+    juce::ComboBox reverbModeBox;
 
     // 染色
     juce::ComboBox satTypeABox, satTypeBBox;
@@ -80,12 +113,24 @@ private:
     juce::Slider edgeSlider;
     juce::Label edgeLabel;
 
+    // 旁通开关（每模块一个）
+    juce::ToggleButton eqBypassBtn, compBypassBtn, satBypassBtn, edgeBypassBtn, reverbBypassBtn;
+
+    // 设置（语言 / 大字 / 缩放）
+    juce::Label sectionSettings;
+    juce::ComboBox langBox, scaleBox;
+    juce::Label langLabel, scaleLabel;
+    juce::ToggleButton largeFontBtn;
+
     using SliderAttachment = juce::AudioProcessorValueTreeState::SliderAttachment;
     std::unique_ptr<SliderAttachment> inputGainAtt, headroomAtt, outputGainAtt;
     std::unique_ptr<SliderAttachment> boostAtt, deboxAtt, clarityAtt, airAtt;
-    std::unique_ptr<SliderAttachment> compAmountAtt, compMakeupAtt, dsLowAtt, dsHighAtt;
+    std::unique_ptr<SliderAttachment> compAmountAtt, compMakeupAtt, reverbAmountAtt;
     std::unique_ptr<SliderAttachment> satAmountAAtt, satAmountBAtt, edgeAtt;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> oversamplingAtt, airFreqAtt, compModeAtt, satTypeAAtt, satTypeBAtt;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> oversamplingAtt, airFreqAtt, compModeAtt, reverbModeAtt, satTypeAAtt, satTypeBAtt;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> eqBypassAtt, compBypassAtt, satBypassAtt, edgeBypassAtt, reverbBypassAtt;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> langAtt, scaleAtt;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> largeFontAtt;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MoonVocEditor)
 };

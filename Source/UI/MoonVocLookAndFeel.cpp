@@ -163,7 +163,7 @@ void MoonVocLookAndFeel::drawToggleButton(juce::Graphics& g, juce::ToggleButton&
     g.fillEllipse(knobR);
 
     // 标签文字
-    g.setColour(on ? Theme::textMain : Theme::textDim);
+    g.setColour(on ? Theme::textMain : Theme::dimColour());
     g.setFont(Theme::fontLabel(13.0f));
     g.drawText(b.getButtonText(), juce::Rectangle<float>(trackR.getRight() + 8.0f, r.getY(),
                                                          r.getWidth() - trackR.getRight() - 10.0f,
@@ -230,7 +230,7 @@ void MoonVocLookAndFeel::drawPopupMenuItem(juce::Graphics& g, const juce::Rectan
         g.fillRoundedRectangle(area.toFloat().reduced(3.0f, 1.0f), 6.0f);
     }
 
-    g.setColour(isHighlighted ? Theme::textMain : Theme::textDim);
+    g.setColour(isHighlighted ? Theme::textMain : Theme::dimColour());
     g.setFont(Theme::fontLabel(14.0f));
     g.drawText(text, area.reduced(10, 0), juce::Justification::centredLeft);
 

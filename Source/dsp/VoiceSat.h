@@ -19,8 +19,10 @@ private:
     std::atomic<float>* amountAParam;
     std::atomic<float>* typeBParam;
     std::atomic<float>* amountBParam;
+    std::atomic<float>* bypassParam;
 
     double sampleRate = 48000.0;
+    float bypassMix = 1.0f; // 1=正常 0=旁通（块级平滑，无 click）
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(VoiceSat)
 };

@@ -67,6 +67,8 @@ private:
     std::atomic<float>* deboxParam;
     std::atomic<float>* clarityParam;
     std::atomic<float>* airParam;
+    std::atomic<float>* bypassParam;
+    float bypassMix = 1.0f; // 1=正常 0=旁通（块级平滑，无 click）
     std::atomic<float>* airFreqParam;
 
     juce::AudioBuffer<float> detectBuffer;

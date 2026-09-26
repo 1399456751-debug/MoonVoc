@@ -45,6 +45,8 @@ private:
     std::atomic<float>* modeParam;
     std::atomic<float>* amountParam;
     std::atomic<float>* makeupParam;
+    std::atomic<float>* bypassParam;
+    float bypassMix = 1.0f; // 1=正常 0=旁通（块级平滑，无 click）
 
     std::atomic<double>* dspRate; // OS 采样率（模块在超采样链内运行）
     double sampleRate = 48000.0;

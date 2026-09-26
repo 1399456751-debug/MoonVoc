@@ -24,8 +24,8 @@ namespace Theme
     // 莫兰迪模块色板：卡片底色（浅浊） + 深色强调（区标题/数值弧/指针/卡片描边）
     const juce::Colour cardGlobal     { 0xfff3eee5 }; // 燕麦暖沙
     const juce::Colour cardGlobalDeep { 0xffa58a66 };
-    const juce::Colour cardDeEss      { 0xfff8ecea }; // 豆沙粉
-    const juce::Colour cardDeEssDeep  { 0xffc07f7f };
+    const juce::Colour cardReverb     { 0xfff8ecea }; // 豆沙粉（混响）
+    const juce::Colour cardReverbDeep { 0xffc07f7f };
     const juce::Colour cardEq         { 0xffedf3e8 }; // 鼠尾草绿
     const juce::Colour cardEqDeep     { 0xff7da172 };
     const juce::Colour cardComp       { 0xffeaf1f6 }; // 雾霾蓝
@@ -39,7 +39,39 @@ namespace Theme
     const juce::Colour cardEngine     { 0xfff3f1ea }; // 米灰
     const juce::Colour cardEngineDeep { 0xff9a947f };
 
-    // 字体（Montserrat Bold，OFL 开源，嵌入 BinaryData；SemiBold/Medium 死重已删）
+    // 字体：英文 = Montserrat Bold/ExtraBold（OFL 嵌入二进制）；
+    //       中文 = 系统中文字体（Montserrat 无 CJK 字形，直接画会乱码）
+    // 老年模式（largeFontMode）：英文换 ExtraBold，全字号 ×1.4，文字色走高对比
+    inline bool largeFontMode = false;
+    inline bool useCjkFont = false;
+    inline float fontScale() { return largeFontMode ? 1.4f : 1.0f; }
+
+    // 中文字体：按候选链找系统里实际存在的家族（找不到则退回默认字体，可能显示为方框）
+    inline juce::String cjkFontName()
+    {
+        static const juce::String cached = []() -> juce::String
+        {
+            const juce::StringArray candidates
+            {
+               #if JUCE_MAC
+                "PingFang SC", "Heiti SC", "STHeiti", "Hiragino Sans GB"
+               #elif JUCE_WINDOWS
+                "Microsoft YaHei UI", "Microsoft YaHei", "SimHei", "SimSun", "DengXian"
+               #else
+                "Noto Sans CJK SC", "WenQuanYi Micro Hei", "Source Han Sans SC"
+               #endif
+            };
+
+            const auto installed = juce::Font::findAllTypefaceNames();
+            for (const auto& name : candidates)
+                if (installed.contains(name))
+                    return name;
+
+            return juce::Font::getDefaultSansSerifFontName();
+        }();
+        return cached;
+    }
+
     inline juce::Typeface::Ptr boldTf()
     {
         static auto tf = juce::Typeface::createSystemTypefaceFor(
@@ -47,10 +79,34 @@ namespace Theme
         return tf;
     }
 
-    inline juce::Font fontTitle(float h = 30.0f)   { return juce::Font(boldTf()).withHeight(h); }
-    inline juce::Font fontSection(float h = 15.0f) { return juce::Font(boldTf()).withHeight(h); }
-    inline juce::Font fontLabel(float h = 14.0f)   { return juce::Font(boldTf()).withHeight(h); }
-    inline juce::Font fontValue(float h = 15.0f)   { return juce::Font(boldTf()).withHeight(h); }
+    inline juce::Typeface::Ptr extraBoldTf()
+    {
+        static auto tf = juce::Typeface::createSystemTypefaceFor(
+            BinaryData::MontserratExtraBold_ttf, BinaryData::MontserratExtraBold_ttfSize);
+        return tf;
+    }
+
+    inline juce::Typeface::Ptr uiTf() { return largeFontMode ? extraBoldTf() : boldTf(); }
+
+    // 统一取字：中文模式走系统 CJK 字体（粗体），英文模式走嵌入的 Montserrat
+    inline juce::Font uiFont(float h)
+    {
+        const float hh = h * fontScale();
+        if (useCjkFont)
+            return juce::Font(cjkFontName(), hh, juce::Font::bold);
+
+        return juce::Font(uiTf()).withHeight(hh);
+    }
+
+    inline juce::Font fontTitle(float h = 30.0f)   { return uiFont(h); }
+    inline juce::Font fontSection(float h = 15.0f) { return uiFont(h); }
+    inline juce::Font fontLabel(float h = 14.0f)   { return uiFont(h); }
+    inline juce::Font fontValue(float h = 15.0f)   { return uiFont(h); }
+    // 品牌字固定 Montserrat（青色渐变 logo，不随语言变）
+    inline juce::Font fontBrand(float h = 30.0f)   { return juce::Font(boldTf()).withHeight(h * fontScale()); }
+
+    // 文字颜色：老年模式用更深的炭色（去掉低对比灰）
+    inline juce::Colour dimColour() { return largeFontMode ? textMain.withAlpha(0.85f) : textDim; }
 }
 
 class MoonVocLookAndFeel : public juce::LookAndFeel_V4

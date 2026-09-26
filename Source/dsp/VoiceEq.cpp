@@ -35,6 +35,7 @@ VoiceEq::VoiceEq(juce::AudioProcessorValueTreeState& apvts, std::atomic<double>&
       clarityParam  (apvts.getRawParameterValue(ParamID::eqClarityBoost)),
       airParam      (apvts.getRawParameterValue(ParamID::eqAirBoost)),
       airFreqParam  (apvts.getRawParameterValue(ParamID::eqAirFreq)),
+      bypassParam   (apvts.getRawParameterValue(ParamID::eqBypass)),
       dspRate(&osSampleRate)
 {
 }
@@ -342,11 +343,19 @@ void VoiceEq::process(const juce::dsp::ProcessContextReplacing<float>& context)
 
     detectSmartFrequencies(inputBlock);
 
+    // 旁通：四段增益目标平滑归零（0dB = 平坦，完全透明）
+    {
+        const float bypTarget = bypassParam->load() > 0.5f ? 0.0f : 1.0f;
+        const double blockDur = (double) inputBlock.getNumSamples() / jmax(1.0, dspRate->load());
+        const float bypAlpha = 1.0f - (float) std::exp(-blockDur / 0.01);
+        bypassMix += bypAlpha * (bypTarget - bypassMix);
+    }
+
     // 每块更新参数目标
-    boostSmooth.setTargetValue(boostParam->load());
-    deboxSmooth.setTargetValue(deboxParam->load());
-    claritySmooth.setTargetValue(clarityParam->load());
-    airSmooth.setTargetValue(airParam->load());
+    boostSmooth.setTargetValue(boostParam->load() * bypassMix);
+    deboxSmooth.setTargetValue(deboxParam->load() * bypassMix);
+    claritySmooth.setTargetValue(clarityParam->load() * bypassMix);
+    airSmooth.setTargetValue(airParam->load() * bypassMix);
 
     const float freq = airFreqParam->load() > 0.5f ? 22000.0f : 16000.0f;
     airFreqSmooth.setTargetValue(freq);

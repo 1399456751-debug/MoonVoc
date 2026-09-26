@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(MoonVoc VERSION 0.6.1)
+project(MoonVoc VERSION 0.7.0)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -29,17 +29,18 @@ juce_add_plugin(MoonVoc
 
 juce_generate_juce_header(MoonVoc)
 
-# 嵌入字体（Montserrat Bold，OFL 开源协议）
+# 嵌入字体（Montserrat Bold / ExtraBold，OFL 开源协议）
 juce_add_binary_data(MoonVocFonts
     SOURCES
         fonts/Montserrat-Bold.ttf
+        fonts/Montserrat-ExtraBold.ttf
 )
 
 target_sources(MoonVoc PRIVATE
     Source/PluginProcessor.cpp
     Source/PluginEditor.cpp
     Source/UI/MoonVocLookAndFeel.cpp
-    Source/dsp/VoiceDeEsser.cpp
+    Source/dsp/VoiceReverb.cpp
     Source/dsp/VoiceEq.cpp
     Source/dsp/VoiceComp.cpp
     Source/dsp/VoiceSat.cpp
@@ -69,7 +70,7 @@ add_executable(MoonVocHeadlessTest
     Source/PluginProcessor.cpp
     Source/PluginEditor.cpp
     Source/UI/MoonVocLookAndFeel.cpp
-    Source/dsp/VoiceDeEsser.cpp
+    Source/dsp/VoiceReverb.cpp
     Source/dsp/VoiceEq.cpp
     Source/dsp/VoiceComp.cpp
     Source/dsp/VoiceSat.cpp
@@ -85,8 +86,8 @@ target_compile_definitions(MoonVocHeadlessTest PRIVATE
     JUCE_USE_CURL=0
     JucePlugin_Name="MoonVoc"
     JucePlugin_Manufacturer="TUJZMIXING"
-    JucePlugin_VersionString="0.6.1"
-    JucePlugin_VersionCode=0x601
+    JucePlugin_VersionString="0.7.0"
+    JucePlugin_VersionCode=0x700
 )
 
 target_link_libraries(MoonVocHeadlessTest PRIVATE
@@ -103,7 +104,7 @@ add_executable(MoonVocRender
     Source/PluginProcessor.cpp
     Source/PluginEditor.cpp
     Source/UI/MoonVocLookAndFeel.cpp
-    Source/dsp/VoiceDeEsser.cpp
+    Source/dsp/VoiceReverb.cpp
     Source/dsp/VoiceEq.cpp
     Source/dsp/VoiceComp.cpp
     Source/dsp/VoiceSat.cpp
@@ -118,8 +119,8 @@ target_compile_definitions(MoonVocRender PRIVATE
     JUCE_USE_CURL=0
     JucePlugin_Name="MoonVoc"
     JucePlugin_Manufacturer="TUJZMIXING"
-    JucePlugin_VersionString="0.6.1"
-    JucePlugin_VersionCode=0x601
+    JucePlugin_VersionString="0.7.0"
+    JucePlugin_VersionCode=0x700
 )
 
 target_link_libraries(MoonVocRender PRIVATE
@@ -137,7 +138,7 @@ add_executable(MoonVocUiSnapshot
     Source/PluginProcessor.cpp
     Source/PluginEditor.cpp
     Source/UI/MoonVocLookAndFeel.cpp
-    Source/dsp/VoiceDeEsser.cpp
+    Source/dsp/VoiceReverb.cpp
     Source/dsp/VoiceEq.cpp
     Source/dsp/VoiceComp.cpp
     Source/dsp/VoiceSat.cpp
@@ -152,8 +153,8 @@ target_compile_definitions(MoonVocUiSnapshot PRIVATE
     JUCE_USE_CURL=0
     JucePlugin_Name="MoonVoc"
     JucePlugin_Manufacturer="TUJZMIXING"
-    JucePlugin_VersionString="0.6.1"
-    JucePlugin_VersionCode=0x601
+    JucePlugin_VersionString="0.7.0"
+    JucePlugin_VersionCode=0x700
 )
 
 target_link_libraries(MoonVocUiSnapshot PRIVATE

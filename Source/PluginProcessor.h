@@ -1,13 +1,13 @@
 #pragma once
 
 #include <JuceHeader.h>
-#include "dsp/VoiceDeEsser.h"
 #include "dsp/VoiceEq.h"
 #include "dsp/VoiceComp.h"
 #include "dsp/VoiceSat.h"
 #include "dsp/VoiceEdge.h"
+#include "dsp/VoiceReverb.h"
 
-// 信号链（需求文档顺序）：去齿音 → EQ → 压缩 → 染色 → 瞬态 → 混响
+// 信号链：EQ → 压缩 → 染色 → 瞬态 → 混响（最后）
 class MoonVocProcessor : public juce::AudioProcessor
 {
 public:
@@ -51,9 +51,6 @@ public:
     float getCompFastAttackMs() const { return comp.fastAttackMsDisplay.load(); }
     float getCompFastRatio() const { return comp.fastRatioDisplay.load(); }
 
-    // 去齿音 GR（UI/测试读取）
-    float getDeEssGainReduction() const { return deEsser.gainReduction.load(); }
-
     // EQ 智能锁定频点（UI 显示，最多 3 个，0 = 无）
     float getEqDeboxFreq(int idx) const { return eq.deboxFreqDisplay[idx].load(); }
     float getEqClarityFreq(int idx) const { return eq.clarityFreqDisplay[idx].load(); }
@@ -71,11 +68,11 @@ private:
     float inLvlSmooth = -60.0f, outLvlSmooth = -60.0f;
     float lvlAttack = 0.5f, lvlRelease = 0.05f;
 
-    VoiceDeEsser deEsser;
     VoiceEq eq;
     VoiceComp comp;
     VoiceSat sat;
     VoiceEdge edge;
+    VoiceReverb reverb;
 
     // 4 个预构建超采样器（2x/4x/8x/16x），RT 安全切换
     std::unique_ptr<juce::dsp::Oversampling<float>> oversamplers[4];

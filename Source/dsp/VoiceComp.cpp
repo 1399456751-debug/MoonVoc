@@ -20,6 +20,7 @@ VoiceComp::VoiceComp(juce::AudioProcessorValueTreeState& apvts, std::atomic<doub
     : modeParam   (apvts.getRawParameterValue(ParamID::compMode)),
       amountParam (apvts.getRawParameterValue(ParamID::compAmount)),
       makeupParam (apvts.getRawParameterValue(ParamID::compMakeup)),
+      bypassParam (apvts.getRawParameterValue(ParamID::compBypass)),
       dspRate(&osSampleRate)
 {
 }
@@ -130,11 +131,19 @@ void VoiceComp::process(const juce::dsp::ProcessContextReplacing<float>& context
 
     updateSmartParams(numSamples);
 
+    // 旁通：压缩量与补偿增益同步平滑归零（阈值 0dB = 不压，makeup 0dB = 不补）
+    {
+        const float bypTarget = bypassParam->load() > 0.5f ? 0.0f : 1.0f;
+        const double blockDur = (double) numSamples / jmax(1.0, sampleRate);
+        const float bypAlpha = 1.0f - (float) std::exp(-blockDur / 0.01);
+        bypassMix += bypAlpha * (bypTarget - bypassMix);
+    }
+
     // 分层阈值：Fast 层浅（-30dB，只抓瞬态峰值）；Smooth 层深（-40dB，管整体节目电平）
-    const float amount = jlimit(0.0f, 100.0f, amountParam->load()) / 100.0f;
+    const float amount = jlimit(0.0f, 100.0f, amountParam->load()) / 100.0f * bypassMix;
     const float fastThresh = -30.0f * amount;
     const float smoothThresh = -40.0f * amount;
-    const float makeupGain = juce::Decibels::decibelsToGain(jlimit(0.0f, 12.0f, makeupParam->load()));
+    const float makeupGain = juce::Decibels::decibelsToGain(jlimit(0.0f, 12.0f, makeupParam->load()) * bypassMix);
 
     float* data[2] { nullptr, nullptr };
     const size_t chs = (size_t) jmin((int) numChannels, 2);

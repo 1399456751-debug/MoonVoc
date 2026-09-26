@@ -14,13 +14,16 @@ public:
 
 private:
     std::atomic<float>* amountParam;
+    std::atomic<float>* bypassParam;
 
     std::atomic<double>* dspRate; // OS 采样率（模块在超采样链内运行）
     double sampleRate = 48000.0;
+    float bypassMix = 1.0f; // 1=正常 0=旁通（块级平滑，无 click）
     float envAttack = 0.01f, envRelease = 0.01f;   // 包络（~1ms / ~50ms）
     float gainSmoothCoeff = 0.01f;                 // 增益平滑（~1.5ms，降调制失真）
     float env[2] { 0.0f, 0.0f };                   // 包络状态（每通道）
     float gainSmooth[2] { 1.0f, 1.0f };            // 平滑后的增益（每通道）
+    float amountSmooth = 0.0f;                     // 平滑后的有效强度（含旁通）
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(VoiceEdge)
 };

@@ -16,7 +16,8 @@ VoiceSat::VoiceSat(juce::AudioProcessorValueTreeState& apvts, std::atomic<double
     : typeAParam   (apvts.getRawParameterValue(ParamID::satTypeA)),
       amountAParam (apvts.getRawParameterValue(ParamID::satAmountA)),
       typeBParam   (apvts.getRawParameterValue(ParamID::satTypeB)),
-      amountBParam (apvts.getRawParameterValue(ParamID::satAmountB))
+      amountBParam (apvts.getRawParameterValue(ParamID::satAmountB)),
+      bypassParam  (apvts.getRawParameterValue(ParamID::satBypass))
 {
 }
 
@@ -65,11 +66,19 @@ void VoiceSat::process(const juce::dsp::ProcessContextReplacing<float>& context)
     if (outputBlock.getNumSamples() == 0)
         return;
 
+    // 旁通：平滑归零两个槽的驱动量（amount→0 时 mix() 输出 = 干声，完全透明）
+    {
+        const float bypTarget = bypassParam->load() > 0.5f ? 0.0f : 1.0f;
+        const double blockDur = (double) outputBlock.getNumSamples() / jmax(1.0, sampleRate);
+        const float bypAlpha = 1.0f - (float) std::exp(-blockDur / 0.01);
+        bypassMix += bypAlpha * (bypTarget - bypassMix);
+    }
+
     const int typeA = (int) typeAParam->load();
     const int typeB = (int) typeBParam->load();
     // gamma 0.7：中段驱动更明显（30% 强度 ≈ 之前 45% 的效果）
-    const float amountA = std::pow(jlimit(0.0f, 100.0f, amountAParam->load()) / 100.0f, 0.7f);
-    const float amountB = std::pow(jlimit(0.0f, 100.0f, amountBParam->load()) / 100.0f, 0.7f);
+    const float amountA = std::pow(jlimit(0.0f, 100.0f, amountAParam->load()) / 100.0f, 0.7f) * bypassMix;
+    const float amountB = std::pow(jlimit(0.0f, 100.0f, amountBParam->load()) / 100.0f, 0.7f) * bypassMix;
 
     const bool useA = typeA != kOff && amountA > 0.0f;
     const bool useB = typeB != kOff && amountB > 0.0f;

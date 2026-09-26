@@ -15,8 +15,9 @@ MoonVocProcessor::MoonVocProcessor()
           .withInput("Input", juce::AudioChannelSet::stereo(), true)
           .withOutput("Output", juce::AudioChannelSet::stereo(), true)),
       apvts(*this, nullptr, "MoonVocParams", createParameterLayout()),
-      deEsser(apvts, dspSampleRate), eq(apvts, dspSampleRate), comp(apvts, dspSampleRate),
+      eq(apvts, dspSampleRate), comp(apvts, dspSampleRate),
       sat(apvts, dspSampleRate), edge(apvts, dspSampleRate),
+      reverb(apvts, dspSampleRate),
       oversamplingParam(apvts.getRawParameterValue(ParamID::oversampling))
 {
 }
@@ -51,19 +52,35 @@ AP::ParameterLayout MoonVocProcessor::createParameterLayout()
     p.push_back(std::make_unique<Param>(ParamID::compAmount, "Compression", pct, 0.0f));
     p.push_back(std::make_unique<Param>(ParamID::compMakeup, "Makeup", 0.0f, 12.0f, 0.0f));
 
-    // 去齿音
-    p.push_back(std::make_unique<Param>(ParamID::dsLowAmount, "De-Ess 3-5k", pct, 0.0f));
-    p.push_back(std::make_unique<Param>(ParamID::dsHighAmount, "De-Ess 5k+", pct, 0.0f));
-
     // 瞬态
-    p.push_back(std::make_unique<Param>(ParamID::edgeAmount, "Edge", -100.0f, 100.0f, 0.0f));
+    p.push_back(std::make_unique<Param>(ParamID::edgeAmount, S8("Edge 瞬态"), -100.0f, 100.0f, 0.0f));
 
     // 染色
     const juce::StringArray satTypes{ "Off", "FET", "Tube", "Tape", "Optical", "Germanium" };
-    p.push_back(std::make_unique<Choice>(ParamID::satTypeA, "Saturate A", satTypes, 0));
-    p.push_back(std::make_unique<Param>(ParamID::satAmountA, "Drive A", pct, 0.0f));
-    p.push_back(std::make_unique<Choice>(ParamID::satTypeB, "Saturate B", satTypes, 0));
-    p.push_back(std::make_unique<Param>(ParamID::satAmountB, "Drive B", pct, 0.0f));
+    p.push_back(std::make_unique<Choice>(ParamID::satTypeA, S8("Saturate A 染色A"), satTypes, 0));
+    p.push_back(std::make_unique<Param>(ParamID::satAmountA, S8("Drive A 驱动A"), pct, 0.0f));
+    p.push_back(std::make_unique<Choice>(ParamID::satTypeB, S8("Saturate B 染色B"), satTypes, 0));
+    p.push_back(std::make_unique<Param>(ParamID::satAmountB, S8("Drive B 驱动B"), pct, 0.0f));
+
+    // 混响（链路最后）
+    p.push_back(std::make_unique<Param>(ParamID::reverbAmount, S8("混响量 Reverb"), pct, 0.0f));
+    p.push_back(std::make_unique<Choice>(ParamID::reverbMode, S8("混响模式 Reverb Mode"),
+        juce::StringArray{ S8("流行 Pop"), S8("说唱 Rap") }, 0));
+
+    // 旁通（默认关 = 不旁通）
+    p.push_back(std::make_unique<Bool>(ParamID::eqBypass,     S8("EQ旁通 EQ Bypass"), false));
+    p.push_back(std::make_unique<Bool>(ParamID::compBypass,   S8("压缩旁通 Comp Bypass"), false));
+    p.push_back(std::make_unique<Bool>(ParamID::satBypass,    S8("染色旁通 Sat Bypass"), false));
+    p.push_back(std::make_unique<Bool>(ParamID::edgeBypass,   S8("瞬态旁通 Edge Bypass"), false));
+    p.push_back(std::make_unique<Bool>(ParamID::reverbBypass, S8("混响旁通 Reverb Bypass"), false));
+
+    // UI 设置
+    p.push_back(std::make_unique<Choice>(ParamID::uiLanguage, S8("语言 Language"),
+        juce::StringArray{ S8("中文"), "English" }, 0));
+    p.push_back(std::make_unique<Bool>(ParamID::uiLargeFont, S8("大字字体 Large Font"), false));
+    // 连续缩放（拖窗口顺滑），下拉框给 9 个预设档
+    p.push_back(std::make_unique<Param>(ParamID::uiScale, S8("界面缩放 Scale"),
+        juce::NormalisableRange<float>(1.0f, 3.0f, 0.01f), 1.0f));
 
     return { p.begin(), p.end() };
 }
@@ -105,11 +122,13 @@ void MoonVocProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
 
     // 链路在 OS 采样率下跑
     juce::dsp::ProcessSpec osSpec{ sampleRate, (juce::uint32) samplesPerBlock, numChannels };
-    deEsser.prepare(osSpec);
     eq.prepare(osSpec);
     comp.prepare(osSpec);
     sat.prepare(osSpec);
     edge.prepare(osSpec);
+
+    // 混响在链路最后、宿主采样率下跑（不进超采样链）
+    reverb.prepare(spec);
 }
 
 void MoonVocProcessor::releaseResources()
@@ -150,7 +169,7 @@ void MoonVocProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::Midi
         oversamplers[osIndex]->reset();
     }
 
-    // 链路：In → Headroom → [DeEss→EQ→Comp→Sat→Edge（可超采样）] → Out
+    // 链路：In → Headroom → [EQ→Comp→Sat→Edge（可超采样）] → Reverb → Out
     inputGain.process(juce::dsp::ProcessContextReplacing<float>(block));
 
     // 输入电平（Input 增益后、处理链前，RMS）：工作电平指示灯参考，压缩等处理不影响它
@@ -176,13 +195,15 @@ void MoonVocProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::Midi
         auto* os = oversamplers[currentOsIndex.load()].get();
         auto osBlock = os->processSamplesUp(block);
         auto osContext = juce::dsp::ProcessContextReplacing<float>(osBlock);
-        deEsser.process(osContext);
         eq.process(osContext);
         comp.process(osContext);
         sat.process(osContext);
         edge.process(osContext);
         os->processSamplesDown(block);
     }
+
+    // 混响（链路最后，宿主采样率）
+    reverb.process(juce::dsp::ProcessContextReplacing<float>(block));
 
     outputGain.process(juce::dsp::ProcessContextReplacing<float>(block));
 

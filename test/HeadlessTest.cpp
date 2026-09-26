@@ -13,9 +13,10 @@ static float bandGainRatio(MoonVocProcessor& p, const juce::String& paramId, flo
     // 重置全部相关参数，避免上一轮随机测试的残留污染测量
     for (auto id : { "eqLowBoost", "eqDeboxCut", "eqClarityBoost", "eqAirBoost", "eqAirFreq",
                      "compAmount", "compMakeup",
-                     "dsLowAmount", "dsHighAmount",
+                     "reverbAmount", "reverbMode",
                      "satTypeA", "satAmountA", "satTypeB", "satAmountB",
                      "edgeAmount",
+                     "eqBypass", "compBypass", "satBypass", "edgeBypass", "reverbBypass",
                      "inputGain", "outputGain", "headroom", "oversampling" })
         *apvts.getRawParameterValue(id) = 0.0f;
     *apvts.getRawParameterValue(paramId) = 6.0f;
@@ -55,9 +56,10 @@ static float defaultRatio(MoonVocProcessor& p, float freq)
     const auto& apvts = p.apvts;
     for (auto id : { "eqLowBoost", "eqDeboxCut", "eqClarityBoost", "eqAirBoost", "eqAirFreq",
                      "compAmount", "compMakeup", "compMode",
-                     "dsLowAmount", "dsHighAmount",
+                     "reverbAmount", "reverbMode",
                      "satTypeA", "satAmountA", "satTypeB", "satAmountB",
                      "edgeAmount",
+                     "eqBypass", "compBypass", "satBypass", "edgeBypass", "reverbBypass",
                      "inputGain", "outputGain", "headroom" })
         *apvts.getRawParameterValue(id) = 0.0f;
 
@@ -187,9 +189,10 @@ int main()
         const auto& apvts = processor.apvts;
         for (auto id : { "eqLowBoost", "eqDeboxCut", "eqClarityBoost", "eqAirBoost", "eqAirFreq",
                          "compAmount", "compMakeup", "compMode",
-                         "dsLowAmount", "dsHighAmount",
+                         "reverbAmount", "reverbMode",
                          "satTypeA", "satAmountA", "satTypeB", "satAmountB",
                          "edgeAmount",
+                         "eqBypass", "compBypass", "satBypass", "edgeBypass", "reverbBypass",
                          "inputGain", "outputGain", "headroom", "oversampling" })
             *apvts.getRawParameterValue(id) = 0.0f;
         *apvts.getRawParameterValue("compMode") = 0.0f;   // Pop
@@ -234,9 +237,10 @@ int main()
         const auto& apvts = processor.apvts;
         for (auto id : { "eqLowBoost", "eqDeboxCut", "eqClarityBoost", "eqAirBoost", "eqAirFreq",
                          "compAmount", "compMakeup",
-                         "dsLowAmount", "dsHighAmount",
+                         "reverbAmount", "reverbMode",
                          "satTypeA", "satAmountA", "satTypeB", "satAmountB",
                          "edgeAmount",
+                         "eqBypass", "compBypass", "satBypass", "edgeBypass", "reverbBypass",
                          "inputGain", "outputGain", "headroom", "oversampling" })
             *apvts.getRawParameterValue(id) = 0.0f;
         *apvts.getRawParameterValue("compAmount") = 60.0f; // 中强度，区分度更明显
@@ -269,47 +273,53 @@ int main()
                   && pulseRatio > sineRatio + 0.5f ? "OK" : "BAD");
     }
 
-    // 去齿音检查：4kHz 齿音信号应被明显削减；1kHz 底音应几乎不受影响（零染色）
+    // 混响检查：wet>0 时单脉冲后应有尾音；wet=0 时无尾音
     {
-        processor.prepareToPlay(48000.0, 512);
+        processor.prepareToPlay(48000.0, 512); // 块大小必须与 processBlock 一致（超采样器按此分配）
         const auto& apvts = processor.apvts;
         for (auto id : { "eqLowBoost", "eqDeboxCut", "eqClarityBoost", "eqAirBoost", "eqAirFreq",
                          "compAmount", "compMakeup",
-                         "dsLowAmount", "dsHighAmount",
+                         "reverbAmount", "reverbMode",
                          "satTypeA", "satAmountA", "satTypeB", "satAmountB",
                          "edgeAmount",
+                         "eqBypass", "compBypass", "satBypass", "edgeBypass", "reverbBypass",
                          "inputGain", "outputGain", "headroom", "oversampling" })
             *apvts.getRawParameterValue(id) = 0.0f;
-        *apvts.getRawParameterValue("dsLowAmount") = 100.0f;
-        *apvts.getRawParameterValue("dsHighAmount") = 100.0f;
+        *apvts.getRawParameterValue("reverbMode") = 1.0f; // Rap 大混响
 
         juce::AudioBuffer<float> buf(2, 512);
         juce::MidiBuffer midi;
-        const int warmup = 200, measure = 1500;
 
-        const auto measureFreq = [&](float freq) -> float
+        // 单脉冲注入后静音 8 块，测尾音能量：wet>0 应有明显尾音，wet=0 应严格无尾音
+        const auto tailEnergy = [&](float amount) -> double
         {
-            double outSq = 0.0;
-            for (int b = 0; b < warmup + measure; ++b)
+            *apvts.getRawParameterValue("reverbAmount") = amount;
+            for (int b = 0; b < 200; ++b) // 冲掉旧尾音（Rap roomSize 0.92 尾很长）/ wet 平滑到位
             {
+                buf.clear();
+                processor.processBlock(buf, midi);
+            }
+            buf.clear();
+            buf.setSample(0, 0, 1.0f);
+            buf.setSample(1, 0, 1.0f);
+            processor.processBlock(buf, midi);
+            double tail = 0.0;
+            for (int b = 1; b <= 16; ++b)
+            {
+                buf.clear();
+                processor.processBlock(buf, midi);
                 for (int c = 0; c < 2; ++c)
                     for (int n = 0; n < 512; ++n)
-                        buf.setSample(c, n, 0.25f * std::sin(2.0f * 3.14159f * freq * (float) (b * 512 + n) / 48000.0f));
-                processor.processBlock(buf, midi);
-                if (b >= warmup)
-                    for (int c = 0; c < 2; ++c)
-                        for (int n = 0; n < 512; ++n)
-                            outSq += (double) buf.getSample(c, n) * buf.getSample(c, n);
+                        tail += (double) buf.getSample(c, n) * buf.getSample(c, n);
             }
-            const float rms = (float) std::sqrt(outSq / (2.0 * measure * 512.0));
-            return rms / (0.25f * 0.7071f);
+            return tail;
         };
 
-        const float sibRatio = measureFreq(4000.0f);   // 齿音频段 → 应被削
-        const float lowRatio = measureFreq(1000.0f);   // 底音 → 应基本不动
-        TRACE("deess check: 4k ratio=%.2f (%+.1f dB), 1k ratio=%.2f (%+.1f dB) %s\n",
-              sibRatio, 20.0 * std::log10(sibRatio), lowRatio, 20.0 * std::log10(lowRatio),
-              sibRatio < 0.6f && lowRatio > 0.85f ? "OK" : "BAD");
+        const double tailWet = tailEnergy(60.0f);
+        const double tailDry = tailEnergy(0.0f);
+        TRACE("reverb check: tailWet=%.4f tailDry=%.6f %s\n",
+              tailWet, tailDry,
+              tailWet > 0.05 && tailDry < 1.0e-4 ? "OK" : "BAD");
     }
 
     // 染色检查：大信号（0.8）被压缩；小信号（0.05）近直通；旁路直通
@@ -318,9 +328,10 @@ int main()
         const auto& apvts = processor.apvts;
         for (auto id : { "eqLowBoost", "eqDeboxCut", "eqClarityBoost", "eqAirBoost", "eqAirFreq",
                          "compAmount", "compMakeup",
-                         "dsLowAmount", "dsHighAmount",
+                         "reverbAmount", "reverbMode",
                          "satTypeA", "satAmountA", "satTypeB", "satAmountB",
                          "edgeAmount",
+                         "eqBypass", "compBypass", "satBypass", "edgeBypass", "reverbBypass",
                          "inputGain", "outputGain", "headroom", "oversampling" })
             *apvts.getRawParameterValue(id) = 0.0f;
         *apvts.getRawParameterValue("satTypeA") = 1.0f;      // FET
@@ -359,9 +370,10 @@ int main()
         const auto& apvts = processor.apvts;
         for (auto id : { "eqLowBoost", "eqDeboxCut", "eqClarityBoost", "eqAirBoost", "eqAirFreq",
                          "compAmount", "compMakeup",
-                         "dsLowAmount", "dsHighAmount",
+                         "reverbAmount", "reverbMode",
                          "satTypeA", "satAmountA", "satTypeB", "satAmountB",
                          "edgeAmount",
+                         "eqBypass", "compBypass", "satBypass", "edgeBypass", "reverbBypass",
                          "inputGain", "outputGain", "headroom", "oversampling" })
             *apvts.getRawParameterValue(id) = 0.0f;
 
@@ -418,17 +430,63 @@ int main()
                   && sineMinus > 0.9f && sineMinus < 1.1f ? "OK" : "BAD");
     }
 
-    // 混响检查：单脉冲后应有尾音（amount>0）；amount=0 时无尾音
+    // 旁通检查：各模块全开 + bypass 打开 → 输出应回到直通（RMS 比 ≈ 1）
     {
         processor.prepareToPlay(48000.0, 512);
         const auto& apvts = processor.apvts;
         for (auto id : { "eqLowBoost", "eqDeboxCut", "eqClarityBoost", "eqAirBoost", "eqAirFreq",
                          "compAmount", "compMakeup",
-                         "dsLowAmount", "dsHighAmount",
+                         "reverbAmount", "reverbMode",
                          "satTypeA", "satAmountA", "satTypeB", "satAmountB",
                          "edgeAmount",
+                         "eqBypass", "compBypass", "satBypass", "edgeBypass", "reverbBypass",
                          "inputGain", "outputGain", "headroom", "oversampling" })
             *apvts.getRawParameterValue(id) = 0.0f;
+
+        // 所有模块全力工作
+        *apvts.getRawParameterValue("eqLowBoost") = 6.0f;
+        *apvts.getRawParameterValue("eqClarityBoost") = 6.0f;
+        *apvts.getRawParameterValue("compAmount") = 100.0f;
+        *apvts.getRawParameterValue("satTypeA") = 1.0f;
+        *apvts.getRawParameterValue("satAmountA") = 100.0f;
+        *apvts.getRawParameterValue("edgeAmount") = 100.0f;
+        *apvts.getRawParameterValue("reverbAmount") = 80.0f;
+        *apvts.getRawParameterValue("reverbMode") = 1.0f;
+
+        juce::AudioBuffer<float> buf(2, 512);
+        juce::MidiBuffer midi;
+        const int warmup = 300, measure = 1000;
+
+        const auto rmsRatio = [&]() -> float
+        {
+            double inSq = 0.0, outSq = 0.0;
+            for (int b = 0; b < warmup + measure; ++b)
+            {
+                for (int c = 0; c < 2; ++c)
+                    for (int n = 0; n < 512; ++n)
+                        buf.setSample(c, n, 0.25f * std::sin(2.0f * 3.14159f * 468.75f * (float) (b * 512 + n) / 48000.0f));
+                processor.processBlock(buf, midi);
+                if (b >= warmup)
+                    for (int c = 0; c < 2; ++c)
+                        for (int n = 0; n < 512; ++n)
+                        {
+                            const float x = 0.25f * std::sin(2.0f * 3.14159f * 468.75f * (float) (b * 512 + n) / 48000.0f);
+                            inSq += (double) x * x;
+                            outSq += (double) buf.getSample(c, n) * buf.getSample(c, n);
+                        }
+            }
+            return (float) std::sqrt(outSq / inSq);
+        };
+
+        const float activeRatio = rmsRatio(); // 全开：应明显不是 1
+        for (auto id : { "eqBypass", "compBypass", "satBypass", "edgeBypass", "reverbBypass" })
+            *apvts.getRawParameterValue(id) = 1.0f;
+        const float bypassRatio = rmsRatio(); // 全旁通：应回到 ≈ 1
+        TRACE("bypass check: activeRatio=%.3f bypassRatio=%.4f %s\n",
+              activeRatio, bypassRatio,
+              std::abs(activeRatio - 1.0f) > 0.05f && std::abs(bypassRatio - 1.0f) < 1.0e-2f ? "OK" : "BAD");
+        if (! (std::abs(bypassRatio - 1.0f) < 1.0e-2f))
+            return 1;
     }
 
     // 共振锁频检查：327Hz 强共振（不在任何候选上）→ De-Box 应能锁到附近并削掉
@@ -437,9 +495,10 @@ int main()
         const auto& apvts = processor.apvts;
         for (auto id : { "eqLowBoost", "eqDeboxCut", "eqClarityBoost", "eqAirBoost", "eqAirFreq",
                          "compAmount", "compMakeup",
-                         "dsLowAmount", "dsHighAmount",
+                         "reverbAmount", "reverbMode",
                          "satTypeA", "satAmountA", "satTypeB", "satAmountB",
                          "edgeAmount",
+                         "eqBypass", "compBypass", "satBypass", "edgeBypass", "reverbBypass",
                          "inputGain", "outputGain", "headroom", "oversampling" })
             *apvts.getRawParameterValue(id) = 0.0f;
         *apvts.getRawParameterValue("eqLowBoost") = 0.0f;
@@ -511,14 +570,15 @@ int main()
         const auto& apvts = processor.apvts;
         for (auto id : { "eqLowBoost", "eqDeboxCut", "eqClarityBoost", "eqAirBoost", "eqAirFreq",
                          "compAmount", "compMakeup",
-                         "dsLowAmount", "dsHighAmount",
+                         "reverbAmount", "reverbMode",
                          "satTypeA", "satAmountA", "satTypeB", "satAmountB",
                          "edgeAmount",
+                         "eqBypass", "compBypass", "satBypass", "edgeBypass", "reverbBypass",
                          "inputGain", "outputGain", "headroom", "oversampling" })
             *apvts.getRawParameterValue(id) = 0.0f;
         *apvts.getRawParameterValue("eqDeboxCut") = -4.0f;
         *apvts.getRawParameterValue("compAmount") = 60.0f;
-        *apvts.getRawParameterValue("dsLowAmount") = 50.0f;
+        *apvts.getRawParameterValue("reverbAmount") = 50.0f;
         *apvts.getRawParameterValue("satTypeA") = 2.0f;
         *apvts.getRawParameterValue("satAmountA") = 70.0f;
         *apvts.getRawParameterValue("edgeAmount") = 50.0f;
@@ -544,9 +604,10 @@ int main()
         const auto& apvts = processor.apvts;
         for (auto id : { "eqLowBoost", "eqDeboxCut", "eqClarityBoost", "eqAirBoost", "eqAirFreq",
                          "compAmount", "compMakeup", "compMode",
-                         "dsLowAmount", "dsHighAmount",
+                         "reverbAmount", "reverbMode",
                          "satTypeA", "satAmountA", "satTypeB", "satAmountB",
                          "edgeAmount",
+                         "eqBypass", "compBypass", "satBypass", "edgeBypass", "reverbBypass",
                          "inputGain", "outputGain", "headroom", "oversampling" })
             *apvts.getRawParameterValue(id) = 0.0f;
 
@@ -586,9 +647,10 @@ int main()
         const auto& apvts = processor.apvts;
         for (auto id : { "eqLowBoost", "eqDeboxCut", "eqClarityBoost", "eqAirBoost", "eqAirFreq",
                          "compAmount", "compMakeup",
-                         "dsLowAmount", "dsHighAmount",
+                         "reverbAmount", "reverbMode",
                          "satTypeA", "satAmountA", "satTypeB", "satAmountB",
                          "edgeAmount",
+                         "eqBypass", "compBypass", "satBypass", "edgeBypass", "reverbBypass",
                          "inputGain", "outputGain", "headroom", "oversampling" })
             *apvts.getRawParameterValue(id) = 0.0f;
         *apvts.getRawParameterValue("oversampling") = 1.0f; // 默认 4x
@@ -654,11 +716,9 @@ int main()
         runProbe("edge +100", [&] { *apvts.getRawParameterValue("compAmount") = 0.0f;
                                     *apvts.getRawParameterValue("edgeAmount") = 100.0f; });
         runProbe("edge -100", [&] { *apvts.getRawParameterValue("edgeAmount") = -100.0f; });
-        runProbe("deess 100", [&] { *apvts.getRawParameterValue("edgeAmount") = 0.0f;
-                                    *apvts.getRawParameterValue("dsLowAmount") = 100.0f;
-                                    *apvts.getRawParameterValue("dsHighAmount") = 100.0f; });
-        *apvts.getRawParameterValue("dsLowAmount") = 0.0f;
-        *apvts.getRawParameterValue("dsHighAmount") = 0.0f;
+        runProbe("reverb 60", [&] { *apvts.getRawParameterValue("edgeAmount") = 0.0f;
+                                    *apvts.getRawParameterValue("reverbAmount") = 60.0f; });
+        *apvts.getRawParameterValue("reverbAmount") = 0.0f;
     }
 
     // 电平表检查：0.25 幅度正弦（RMS -15dBFS）→ 输入/输出电平表应 ≈ -15dB；静音应衰减
@@ -667,9 +727,10 @@ int main()
         const auto& apvts = processor.apvts;
         for (auto id : { "eqLowBoost", "eqDeboxCut", "eqClarityBoost", "eqAirBoost", "eqAirFreq",
                          "compAmount", "compMakeup",
-                         "dsLowAmount", "dsHighAmount",
+                         "reverbAmount", "reverbMode",
                          "satTypeA", "satAmountA", "satTypeB", "satAmountB",
                          "edgeAmount",
+                         "eqBypass", "compBypass", "satBypass", "edgeBypass", "reverbBypass",
                          "inputGain", "outputGain", "headroom", "oversampling" })
             *apvts.getRawParameterValue(id) = 0.0f;
 
@@ -705,9 +766,10 @@ int main()
         const auto& apvts = processor.apvts;
         for (auto id : { "eqLowBoost", "eqDeboxCut", "eqClarityBoost", "eqAirBoost", "eqAirFreq",
                          "compAmount", "compMakeup", "compMode",
-                         "dsLowAmount", "dsHighAmount",
+                         "reverbAmount", "reverbMode",
                          "satTypeA", "satAmountA", "satTypeB", "satAmountB",
                          "edgeAmount",
+                         "eqBypass", "compBypass", "satBypass", "edgeBypass", "reverbBypass",
                          "inputGain", "outputGain", "headroom", "oversampling" })
             *apvts.getRawParameterValue(id) = 0.0f;
 
@@ -742,9 +804,10 @@ int main()
         const auto& apvts = processor.apvts;
         for (auto id : { "eqLowBoost", "eqDeboxCut", "eqClarityBoost", "eqAirBoost", "eqAirFreq",
                          "compAmount", "compMakeup", "compMode",
-                         "dsLowAmount", "dsHighAmount",
+                         "reverbAmount", "reverbMode",
                          "satTypeA", "satAmountA", "satTypeB", "satAmountB",
                          "edgeAmount",
+                         "eqBypass", "compBypass", "satBypass", "edgeBypass", "reverbBypass",
                          "inputGain", "outputGain", "headroom", "oversampling" })
             *apvts.getRawParameterValue(id) = 0.0f;
         *apvts.getRawParameterValue("eqClarityBoost") = 6.0f;
@@ -779,9 +842,10 @@ int main()
         const auto& apvts = processor.apvts;
         for (auto id : { "eqLowBoost", "eqDeboxCut", "eqClarityBoost", "eqAirBoost", "eqAirFreq",
                          "compAmount", "compMakeup", "compMode",
-                         "dsLowAmount", "dsHighAmount",
+                         "reverbAmount", "reverbMode",
                          "satTypeA", "satAmountA", "satTypeB", "satAmountB",
                          "edgeAmount",
+                         "eqBypass", "compBypass", "satBypass", "edgeBypass", "reverbBypass",
                          "inputGain", "outputGain", "headroom", "oversampling" })
             *apvts.getRawParameterValue(id) = 0.0f;
         *apvts.getRawParameterValue("eqClarityBoost") = 12.0f;
