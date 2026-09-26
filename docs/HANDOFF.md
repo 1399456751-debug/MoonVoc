@@ -122,6 +122,7 @@ moonvoc/
 - [x] **莫兰迪卡片**：Theme 新增 8 组卡片色（燕麦沙/豆沙粉/鼠尾草/雾霾蓝/焦糖杏/香芋紫/冷雾灰/米灰，底色+深色成对）；卡片体填模块浅色、描边深色 30%、区标题/竖条/数值弧/指针/悬停环全用模块深色（`setupSlider` 多传 arcColour → slider 属性 `moonvocArcColor`，LAF 读取）；卡片圆角 14→16
 - [x] **布局配套**：slider bounds 含数值框（kTbH=18，原 64×64 正好框导致旋钮实绘仅 46px）；全局卡 h 128→140 放下数值框；标准旋钮 d=64 实绘 64、hero 120 实绘 120
 - [x] **验证**：headless EXIT=0、UiSnapshot FAIL=0（EQ 行列对齐断言更新）、截图肉眼确认零值指针全在 12 点、弧从指针零位出发、Input +2 弧在右侧
+- [x] **已打包**：`dist/MoonVoc_0.6.1_Win64.zip`（4.6MB：VST3 + Standalone + 详细使用说明.txt，UTF-8 BOM+CRLF 防记事本乱码；zip 中文名 UTF-8+flag 已验证）发给朋友测试；git push 仍待做
 
 **待办**：
 - [ ] **AI 未做**：正式发布需 pluginval 验证（未安装）、macOS 移植（已尝试未成，见 §11）
