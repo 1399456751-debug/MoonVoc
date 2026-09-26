@@ -4,7 +4,7 @@
 #include "PluginProcessor.h"
 #include "UI/MoonVocLookAndFeel.h"
 
-// UI：需求布局（左 Edge+染色 / 中压缩+EQ / 右去齿音+电平表）+ 上帝粒子指示灯 + 锁频显示
+// UI：水平信号链卡片式（顶部全局条 → 模块卡片横排 → 底部 Monitor + Engine）
 class MoonVocEditor : public juce::AudioProcessorEditor, private juce::Timer
 {
 public:
@@ -13,10 +13,11 @@ public:
 
     void paint(juce::Graphics&) override;
     void resized() override;
-    void mouseMove(const juce::MouseEvent& e) override { mousePos = e.getPosition(); }
 
-    // 布局自检（打印关键控件 bounds，供程序化验证）
+    // 布局自检（打印关键控件 bounds + 卡片归属断言，供程序化验证）
     void dumpLayout() const;
+    // 测试用：手动推进一次 timer 逻辑（离线快照更新电平表/锁频标签）
+    void demoTick() { timerCallback(); }
 
 private:
     void timerCallback() override;
@@ -29,27 +30,24 @@ private:
     void paintIndicator(juce::Graphics& g, juce::Rectangle<int> r);
     void paintGrBar(juce::Graphics& g, juce::Rectangle<int> r, float grDb,
                     const juce::String& name, juce::Colour col);
+    void renderBackground(); // resized 里预渲染 bgCache（渐变 + 抽象装饰）
 
     MoonVocProcessor& processorRef;
     std::unique_ptr<MoonVocLookAndFeel> lookAndFeel;
-    float indicatorPhase = 0.0f; // 指示灯闪烁相位
+    float indicatorPhase = 0.0f; // 指示灯闪烁 + 背景呼吸相位
     float meterPeakIn = -60.0f, meterPeakOut = -60.0f; // 电平峰值保持
-    juce::Image metalTexture;    // 金属拉丝纹理（预渲染缓存）
-    juce::Rectangle<int> panelGlobal, panelLeft, panelMid, panelRight; // 面板区域（resized 记录，paint 绘制）
-    juce::Rectangle<int> meterInRect, meterOutRect; // 电平表位置（resized 计算，paint 绘制）
-    juce::Rectangle<int> indicatorRect;             // 指示灯位置（Output 右侧，resized 计算）
-    juce::Rectangle<int> eqRowRect;                 // EQ 行区域（自检用）
-    juce::Rectangle<int> grCompRect, grDeessRect;   // GR 表（压缩/去齿音）
-    // 星野（确定性随机，相对坐标）
-    struct Star { float x, y, size; };
-    std::array<Star, 42> stars;
-    juce::Image moonImage; // 月亮背景图（最底层半透明）
-    juce::Point<int> mousePos; // 鼠标位置（面板悬停发光用）
+    juce::Image bgCache;   // 静态背景缓存（渐变 + 抽象装饰），resized 重渲染
 
-    // 背景漂浮粒子（相对坐标 0~1，随窗口缩放）
+    // 卡片区域（resized 记录，paint 绘制）
+    juce::Rectangle<int> cardGlobal, cardDeEss, cardEq, cardComp, cardSat, cardEdge;
+    juce::Rectangle<int> cardMonitor, cardOs;
+    juce::Rectangle<int> meterInRect, meterOutRect; // 电平表位置（resized 计算，paint 绘制）
+    juce::Rectangle<int> indicatorRect;             // 指示灯位置（cardGlobal 右端）
+    juce::Rectangle<int> grCompRect, grDeessRect;   // GR 表（压缩/去齿音）
 
     // 区段标题
     juce::Label sectionGlobal, sectionEq, sectionComp, sectionDeEss, sectionSat, sectionEdge;
+    juce::Label sectionMonitor, sectionOs;
 
     // 全局
     juce::Slider inputGainSlider, headroomSlider, outputGainSlider;

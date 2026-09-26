@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(MoonVoc VERSION 0.5.1)
+project(MoonVoc VERSION 0.6.0)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -29,13 +29,10 @@ juce_add_plugin(MoonVoc
 
 juce_generate_juce_header(MoonVoc)
 
-# 嵌入字体（Montserrat，OFL 开源协议）+ 月亮背景图
+# 嵌入字体（Montserrat Bold，OFL 开源协议）
 juce_add_binary_data(MoonVocFonts
     SOURCES
         fonts/Montserrat-Bold.ttf
-        fonts/Montserrat-SemiBold.ttf
-        fonts/Montserrat-Medium.ttf
-        assets/moon.jpg
 )
 
 target_sources(MoonVoc PRIVATE
@@ -88,8 +85,8 @@ target_compile_definitions(MoonVocHeadlessTest PRIVATE
     JUCE_USE_CURL=0
     JucePlugin_Name="MoonVoc"
     JucePlugin_Manufacturer="TUJZMIXING"
-    JucePlugin_VersionString="0.5.1"
-    JucePlugin_VersionCode=0x501
+    JucePlugin_VersionString="0.6.0"
+    JucePlugin_VersionCode=0x600
 )
 
 target_link_libraries(MoonVocHeadlessTest PRIVATE
@@ -121,8 +118,8 @@ target_compile_definitions(MoonVocRender PRIVATE
     JUCE_USE_CURL=0
     JucePlugin_Name="MoonVoc"
     JucePlugin_Manufacturer="TUJZMIXING"
-    JucePlugin_VersionString="0.5.1"
-    JucePlugin_VersionCode=0x501
+    JucePlugin_VersionString="0.6.0"
+    JucePlugin_VersionCode=0x600
 )
 
 target_link_libraries(MoonVocRender PRIVATE
@@ -155,8 +152,8 @@ target_compile_definitions(MoonVocUiSnapshot PRIVATE
     JUCE_USE_CURL=0
     JucePlugin_Name="MoonVoc"
     JucePlugin_Manufacturer="TUJZMIXING"
-    JucePlugin_VersionString="0.5.1"
-    JucePlugin_VersionCode=0x501
+    JucePlugin_VersionString="0.6.0"
+    JucePlugin_VersionCode=0x600
 )
 
 target_link_libraries(MoonVocUiSnapshot PRIVATE

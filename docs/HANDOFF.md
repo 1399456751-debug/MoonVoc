@@ -102,11 +102,23 @@ moonvoc/
 - [x] 测试适配：16x 越界 4.0→3.0；严格直通（原依赖 Off 逐样本相等）改为 **RMS 能量守恒**（2x FIR 通带纹波 ~0.15%，容差 1%）；headless 全绿 EXIT=0
 - [ ] 待打包发布 / 更新用户测试包
 
+**2026-09-26 UI 全面重构 v0.6.0（青蓝·珊瑚亮色卡片主题）**：
+- [x] **根因**：用户评"旧 UI 太丑"（深紫黑 + 5层辉光/星云/星野/金属拉丝/能量连线/神秘符文/月亮照片等特效堆叠，特效盖过功能）
+- [x] **新方向（用户选定）**：青蓝(#2dd4bf)·珊瑚(#ff6b6b)亮色底(#f2f0ec米白) + 水平信号链卡片 + 轻拟物旋钮 + 抽象几何背景淡动效 + 保留文字品牌去特效 + 移除月亮照片。对标 FabFilter/苹果
+- [x] **调色板**：`MoonVocLookAndFeel.h` Theme 12→14 常量全换亮色系（删 accentHi，新增 accent2/track/shadow）
+- [x] **布局**：窗口 1280×660→**1280×720**；顶部全局条卡(品牌+Input/Headroom/Output+指示灯) → 信号链 5 卡横排(DeEss180/EQ320/Comp272/Sat260/Edge152，间距16) → 底部 Monitor(电平+GR)+Engine(超采样) 双卡 → 页脚 logo；旋钮直径两档 120 hero(Comp/Edge)/64 标准
+- [x] **LookAndFeel 全重写**：drawRotarySlider 轻拟物 7 层(track 弧环→青橙渐变数值弧→投影→白体微渐变→顶部光晕→短指针→悬停细环)；drawComboBox 白底胶囊；drawToggleButton iOS pill；删除 drawGlowText 5层辉光
+- [x] **资源清理**：删 SemiBold/Medium 字体（~900KB 死重，fontTitle/Section/Label/Value 全用 Bold）+ 删 moon.jpg + 删 stars/metalTexture 死代码
+- [x] **顺手修 2 个既有 bug**：indicatorRect 死赋值、右列 sectionEdge 误用（电平表进 Monitor 卡，新增 sectionMonitor/sectionOs）
+- [x] **踩坑**：JUCE ComboBox 内部有子 Label 画选中文字（juce_ComboBox.cpp:275），drawComboBox 不可再画否则重叠（"Pop"→"POpp"）；演示截图需 `setValueNotifyingHost(convertTo0to1(v))` 才能触发 attachment 同步 Slider
+- [x] **验证**：headless EXIT=0 全绿(31项)、UiSnapshot FAIL=0、演示态截图确认数值弧/电平/GR/指示灯/品牌渐变全部点亮
+- [ ] 待打包发布 / 更新用户测试包 / git push
+
 **待办**：
 - [ ] **AI 未做**：正式发布需 pluginval 验证（未安装）、macOS 移植（已尝试未成，见 §11）
 - [ ] 图标/安装包/签名未做
 - [ ] README.md 未写（可基于 docs/requirements.md 生成）
-- [ ] UI 布局未动，待用户后续反馈是否重构布局
+- [x] ~~UI 布局未动~~ → **2026-09-26 已全面重构（v0.6.0 卡片式亮色主题，见上）**
 - [ ] Tube 非对称饱和含微小 DC 分量（设计取舍，未加 DC blocker——会伤低频相位）
 - [ ] 压缩 crest 检测在 1s 平滑，快速风格变化响应偏慢（可调 crestAlpha）
 - [ ] 电平表 VU 上升 10ms 对瞬时峰值略钝（峰值保持线已补）
