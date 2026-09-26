@@ -114,6 +114,20 @@ moonvoc/
 - [x] **验证**：headless EXIT=0 全绿(31项)、UiSnapshot FAIL=0、演示态截图确认数值弧/电平/GR/指示灯/品牌渐变全部点亮
 - [ ] 待打包发布 / 更新用户测试包 / git push
 
+**2026-09-27 v0.7.0（5 项新需求 + AU 格式）**：
+- [x] **混响替换去齿音**：删 `VoiceDeEsser`（.h/.cpp 全删），新增 `Source/dsp/VoiceReverb.h/.cpp`（juce::dsp::Reverb 包装）：单旋钮=wet 0~100%（块级 20ms 平滑），两模式 Pop(roomSize .55/damp .5) / Rap(.92/.30)；**链路最后**、卡片**最右**（cardEdge 之后）；Monitor 去 DE-ESS 条改 3 条
+  - **踩坑**：juce::Reverb 内部 dry×2 / wet×3 标定 → `dryLevel` 必须 0.5 才是 1:1 直通（设 1.0 会 +6dB）；wet 上限 0.33
+- [x] **模块旁通**：5 个 Bool 参数（eq/comp/sat/edge/reverbBypass），各模块内部读参数后用 **10ms 块级 EMA** 把有效量平滑归零（EQ 乘 4 段增益目标 / Comp 乘 amount+makeup / Sat 乘双槽 amount / Edge 乘 amount / Reverb 乘 wet），无 click；headless 验证 active=0.069 → bypass=1.000
+- [x] **自由缩放 100%~300%**：`uiScale` Float 参数（1.0~3.0 连续）驱动窗口尺寸；渲染用 **Canvas 子容器 + `setTransform(scale)`**（JUCE 明确禁止在 editor 自身上加 transform，editorResized 里有 jassert）；拖窗口右下角会写回参数（appliedScale/settingScale 防抖），下拉 9 档用 ComboBoxAttachment（ComboBoxAttachment 按整段归一化映射，档数必须与 range 步进对齐）
+- [x] **老年大字版**：新增 `fonts/Montserrat-ExtraBold.ttf` 嵌入；`Theme::largeFontMode` → 字号 ×1.4 + ExtraBold + 文字色走 `Theme::dimColour()`（深炭高对比）；文字容器宽度（表头/数值区/airFreq/页脚）按 `fontScale()` 缩放，切换后 `canvas.resized()` 重排
+- [x] **中文版**：`Source/UI/MoonVocStrings.h` 双语表 + 3 个设置控件（语言/大字/缩放，平铺在全局条右侧）
+  - **关键踩坑（务必记住）**：`juce::String(const char*)` 按 **ASCII** 解码（juce_String.cpp:307 用 CharPointer_ASCII），UTF-8 中文必须 `String::fromUTF8` → 统一用 `ParamIDs.h` 里的 `S8()` 包裹
+  - 中文字体：Montserrat 无 CJK 字形，中文模式切系统字体（Win 候选链 Microsoft YaHei UI → YaHei → SimHei；mac PingFang SC…），`Theme::cjkFontName()` 用 `findAllTypefaceNames` 匹配
+  - 宿主参数名用**固定双语**（如「混响量 Reverb」）：宿主扫描时缓存参数名，运行时改名不生效且可能破坏已存工程
+- [x] **AU 格式（Logic/GarageBand）**：CMakeLists `FORMATS VST3 AU Standalone`（Windows 构建 JUCE 自动忽略 AU，已本地验证）；AU_MAIN_TYPE 默认 kAudioUnitType_Effect 无需显式设；mac CI 加 `auval -v aufx MoVc Tujm` 验证 + 打包 .component
+- [x] **验证**：headless EXIT=0（31 项，含混响尾音/旁通回归）、UiSnapshot 4 状态（中文/中文大字/英文/200%）FAIL=0 且逐张肉眼确认
+- [x] **打包**：`dist/MoonVoc_0.7.0_Win64.zip`（VST3+Standalone+新说明）；mac 由 CI 出 `MoonVoc_0.7.0_mac.zip`（VST3+AU+Standalone+README_Mac）
+
 **2026-09-26 UI 修正 v0.6.1（用户反馈 5 项）**：
 - [x] **字体太小**：数值框覆盖 `createSliderTextBox` 设 `fontValue(15)`（原走 Label 默认字体）；标签 13→14、区标题 13→15、lock 11→12、电平/GR 12/13→13/14、下拉 13→14；`drawLabel` 下限 13→12
 - [x] **旋钮零值改 12 点**：`drawRotarySlider` 角度重写——零值固定角 0（12 点），正值顺时针到 +135°、负值逆时针到 -135°（双极全环/单向右半环）；**删除 `moonvocSingleSided` 属性与 twoSided 分支**
