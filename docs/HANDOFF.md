@@ -1,10 +1,10 @@
-# MoonVoc 交接文档（beta0.5）
+# MoonVoc 交接文档（v0.8.0）
 
-> 给下一个会话/模型：读完这份文档即可无缝接手。最后更新：2026-08-08（beta0.5：Windows 已编译打包发布测试，macOS CI 未跑通已删，见 §11）
+> 给下一个会话/模型：读完这份文档即可无缝接手。最后更新：2026-09-27（v0.8.0：压缩三级重做 / DeBess 去齿音 / 瞬态增强 / 毛玻璃 UI）
 
 ## 0. 一句话总结
 
-一体化人声处理 VST3 插件（JUCE 9 + C++17），信号链：**去齿音 → 四段智能 EQ → 智能双层压缩 → 染色 → 瞬态整形**。默认状态全链透明（THD < -92.0dB），GitHub 公开：`https://github.com/1399456751-debug/MoonVoc`。**beta0.5（版本 0.5.0）Windows 版已编译打包发用户测试，见 §11**。
+一体化人声处理 VST3/AU 插件（JUCE 9 + C++17），信号链：**四段智能 EQ → 智能三级压缩 → 去齿音 → 染色 → 瞬态整形 → 混响**。参数全 0 时全链严格透明，残余 THD 来自超采样链本身（4x 下 -85.0dB / 16x 下 -82.8dB，模块全旁通时同值，见 §9）。GitHub 公开：`https://github.com/1399456751-debug/MoonVoc`。**v0.7.0 已发布（Win + mac），v0.8.0 源码完成、待打包**。
 
 ## 1. 环境
 
@@ -61,13 +61,14 @@ moonvoc/
 
 | 模块 | 文件 | 算法 | 关键参数 |
 |---|---|---|---|
-| 去齿音 | VoiceDeEsser | 双频段（3-5k/5k+），候选窄带锁频（3 档），齿音特征=带通包络 vs 全带包络的相对值（阈值 -25dB），动态 peaking 削减（Q=2，最大 -24dB×强度） | dsLowAmount/dsHighAmount |
-| EQ | VoiceEq | 四段：Thick（智能基频 80~315Hz 锁频，搁架中心=基频×1.25）+ De-Box（13 窄带 200~800Hz 多峰检测，最多 3 峰并行削减）+ Clarity（13 窄带 2k~8k 多峰提升，**峰锁定消除频点扫动 + 刺耳峰限增益**）+ Air（16k/22k 搁架，v0.2 默认 16k 更顺滑；Q 0.5 缓坡，8k~14k 平滑爬升）。对比度>2.0 锁频，抛物线插值，Q 自适应 0.9~3.5 | eqLowBoost/eqDeboxCut/eqClarityBoost/eqAirBoost/eqAirFreq |
-| 压缩 | VoiceComp | 双层串联：Fast（1176 风：快 attack 高 ratio 硬拐点，阈值 -30dB×强度）+ Smooth（LA-2A 风：慢 attack 2:1 软拐点 knee 6dB，阈值 -40dB×强度）。attack/release/ratio 由峰值因子（crest，1s EMA）智能自适应（瞬态→0.15ms/6:1，平滑→3ms/3.5:1）。参数 30ms 平滑防 click | compMode/compAmount/compMakeup |
+| EQ | VoiceEq | 四段：Thick（智能基频 80~315Hz 锁频，搁架中心=基频×1.25）+ De-Box（13 窄带 200~800Hz 多峰检测，最多 3 峰并行削减）+ Clarity（13 窄带 2k~8k 多峰提升，**峰锁定消除频点扫动 + 刺耳峰限增益**）+ Air（16k/22k 搁架；Q 0.5 缓坡）。对比度>2.0 锁频，抛物线插值，Q 自适应 0.9~3.5 | eqLowBoost/eqDeboxCut/eqClarityBoost/eqAirBoost/eqAirFreq |
+| 压缩 | VoiceComp | **三级大师链（v0.8.0 重写）**：① FET 峰值层（1176 风，快 attack 高 ratio 硬拐点，只抓字头过冲）② 光电平滑层（LA-2A 风，慢 attack 2:1 软拐点 knee 8dB + **程序依赖释放**，做胶水）③ 并行密度层（New York 风，重压支链与主信号混合 15~35%）。**侧链高通 120Hz 只作用于检测路径**（去低频触发 → 不抽气）。智能保留并强化：crest 峰值因子（EMA 1s→300ms）驱动 FET 的 attack/ratio，新增短时瞬态检测（5ms vs 300ms EMA）让 attack 更快响应字头。阈值用 **pow(amount,0.4) 幂曲线**映射（线性映射下旋钮拧一半几乎不压缩） | compMode(Glow/Forge)/compAmount/compMakeup |
+| 去齿音 | VoiceDeEsser | **Airwindows DeBess 移植（v0.8.0 新增，MIT）**：维护采样斜率历史，**连乘"斜率的变化率"**检测齿音 —— 任何一处斜率平缓就把 sense 压掉，所以方波/锯齿/正常辅音一律不触发。削减方式为**动态 IIR 内插**（`out = iir + (in-iir)/ratio`），不是滤波器组。**超采样集成**：检测路径按 OS 倍率降采样（每 osFactor 个 OS 样本推进一次），窗口时间长度与原版 44.1k 一致。**scale 必须用 hostRate 而非 dspRate**（用 dspRate 会让倍率越高越弱） | dsAmount/dsFocus |
 | 染色 | VoiceSat | 6 种饱和（FET/Tube/Tape/Optical/Germanium），小信号斜率精确 1:1（干净），大信号软压缩；A+B 双槽串联；amount 用 gamma 0.7 | satTypeA/B/satAmountA/B |
-| 瞬态 | VoiceEdge | 包络跟随（attack 1ms/release 50ms），瞬态强度=(输入-包络)/输入，增益平滑 1.5ms 降调制失真（THD -83dB）；±100 双向 | edgeAmount |
+| 瞬态 | VoiceEdge | **双包络差值（v0.8.0 重写，SPL Transient Designer 原理）**：快包络（0.3ms/15ms）抓字头、慢包络（25ms/250ms）跟节目电平，差值即瞬态强度 —— 效果持续整个字头而非一瞬间。深度 ±220%（原 ±80%）；**稳态死区 0.15** 滤掉"快包络跟峰值/慢包络跟均值"的固有差值（否则正弦被持续调制 18%） | edgeAmount |
+| 混响 | VoiceReverb | juce::dsp::Reverb 包装，单旋钮 wet + 两模式（Veil 薄纱 / Abyss 深渊），链路最后、宿主采样率运行。**踩坑**：内部 dry×2/wet×3 标定 → dryLevel 必须 0.5 才是 1:1，wet 上限 0.33 | reverbAmount/reverbMode |
 
-**已删除（用户要求）**：混响模块、AutoGain 功能、所有 Bypass 按钮（参数+DSP+UI 全清）。
+**历史沿革**：混响曾在 v0.1 被删、v0.7.0 回归（替换去齿音）；AutoGain 功能已永久删除；旁通按钮在 v0.7.0 以每模块开关形式回归（6 个 Bool 参数 + 10ms EMA 平滑归零）。
 
 **输出电平表**：Processor 每块算输入/输出 RMS → VU 平滑（attack 10ms/release 300ms）→ atomic。
 **GR 表**：压缩 gainReduction + 去齿音 gainReduction（双频段削减和）。
@@ -82,6 +83,18 @@ moonvoc/
 - 布局验证：`UiSnapshot.exe` 打印控件坐标（Air 框中心=EQ 行中心、四旋钮等宽 y 一致、Edge 150 正方、Comp 130 正方、Drive 下拉等大）
 
 ## 6. 已知问题 / 待办
+
+**v0.8.0 已完成（2026-09-27）**：
+- [x] **压缩重做**：三级大师链（FET + 光电 + 并行）+ 侧链高通 120Hz（只作用于检测）+ 程序依赖释放；**保留并强化 crest 智能**（EMA 1s→300ms + 短时瞬态检测）；阈值改 pow(amount,0.4) 幂曲线
+- [x] **去齿音**：换 Airwindows DeBess 移植（不滤波、靠斜率连乘检测），链路位于**压缩后**，双旋钮 Amount/Focus + GR 表
+- [x] **瞬态增强**：双包络差值法，深度 ±80% → **±220%**，加稳态死区 0.15
+- [x] Input/Output/Headroom：±12 → **±18dB**
+- [x] 默认语言：中文 → **英文**（中文选项保留）
+- [x] 模式改名：压缩 **Glow/Forge**（柔光/锻造）、混响 **Veil/Abyss**（薄纱/深渊）
+- [x] UI：窗口 **1496×672**（6 卡横排，去掉底部 64px 空白）+ hero 旋钮 132 + Monitor 4 条
+- [x] UI 质感：卡片**毛玻璃**（背景模糊预渲染缓存）+ 旋钮**弧环多层发光**
+- [x] 新增 `fidelity transparency` 断言（default == all-bypass）
+- [ ] **待打包发布**（Win zip + mac CI）与更新用户测试包
 
 **v0.2 已完成（2026-08-07）**：
 - [x] Clarity 扫动消除：峰锁定后频点最差偏移 0 Hz
@@ -168,18 +181,20 @@ moonvoc/
 2. **OS 采样率错位**：模块在 OS 链内运行，一切系数/时间常数必须用 `dspRate`（OS 率）而非 spec.sampleRate；**检测带通系数要每块重写**（OS 倍率热切换后旧系数全错位）
 3. **状态残留**：测试间参数残留会污染测量（bandGainRatio 已全量重置）；THD 测量必须相干采样（468.75Hz=512 样本整数周期）
 
-## 9. 测试基线（beta0.5 复跑全绿，EXIT=0 无 FAIL）
+## 9. 测试基线（v0.8.0 复跑全绿，EXIT=0 无 FAIL）
 
 - 系数公式 vs JUCE 官方：maxErr ≤ 2.4e-7 ✓（7 组：lowShelf ±6 →1.19e-7、highShelf +3 →2.38e-7、peak ±5 →1.19e-7、bandpass →9.31e-10 / Q6 →1.19e-7）
-- 默认直通 THD：**-92.0dB** ✓（FIR 超采样后比 v0.1 的 -89.5dB 更低）；压缩 100%：-117.2dB；Edge ±100：-76.9/-75.5dB；去齿音 100%：-92.0dB；饱和 FET/Tube：-48.4/-53.3dB（设计染色）
-- 压缩：GR -25.1dB（100%）；智能参数：正弦→2.64ms/3.8:1，脉冲→0.79ms/5.4:1 ✓
-- 去齿音：4k 削 -31.9dB / 1k 仅 -0.5dB（零染色）✓
-- EQ 频响：100Hz +4.2 / 400Hz +3.4 / 3kHz +5.7 / 16kHz +3.0 ✓；Clarity 锁定 593/3150、Air 锁定 593/5934；双共振同时锁 315+560 削减 ✓
+- **保真度（fidelity，固定 4x 超采样）**：默认直通 THD **-85.0dB**、rmsRatio 0.9990；**全模块旁通后同为 -85.0dB** → 残余失真来自**超采样 FIR 链本身，非任何 DSP 模块**（新增断言 `fidelity transparency` 锁定）。饱和 FET/Tube：-49.3/-52.4dB（设计染色）；压缩 100%：-104.8dB；Edge ±100：-85.0dB；混响 60%：-84.4dB
+  - **注意**：早期记录的「默认直通 -92.0dB」是 beta0.5 时代数值，v0.8.0 未复现；已实测确认**与模块无关**（全部旁通仍是同值），按实测更新为 -85.0dB（4x）/ -82.8dB（16x，FIR 级联累积略高）。若将来要真正降低这个底噪，方向是超采样滤波器本身（如换更高阶/更优纹波的 FIR），不是模块
+- **压缩（v0.8.0 三级）**：100% 下 GR **-21.3dB**；**侧链高通 80Hz GR -11.3dB vs 1kHz -21.3dB**（低频少压 10dB，比值 0.53）；**程序依赖释放**：短音 -22.77dB vs 长音 -24.22dB（压得久残余更大）。crest 智能：正弦 crest 3.0dB → atk 2.66ms/ratio 4.5；脉冲 crest 8.8dB → atk 0.71ms/ratio 7.4
+- **去齿音（DeBess）**：7kHz 齿音削 **-12.8dB**；**1kHz 正弦 0.0dB（零触发、零染色）**；Amount=0 时 0.0dB
+- **瞬态（双包络）**：off ×1.000（严格直通）、+100 **×3.076**、-100 **×0.364**；稳态相干正弦 +1.000/-1.000（透明，死区生效）
+- EQ 频响：100Hz +4.2 / 400Hz +3.4 / 3kHz +5.8 / 16kHz +3.0 ✓；Clarity 锁定 593/3150、Air 锁定 593/5934；双共振同时锁 315+560 削减 ✓
 - **bypass 全链直通：maxErr=0.00（逐样本完全一致）✓**
-- **flat16 频响（16x 超采样平坦度）：100/400/1k/4k/8k/15k Hz 全频段 ±0.10dB ✓**
-- **Clarity 峰锁定：锁定后最差偏移 0Hz（<250）✓；刺耳峰限增益 6.3dB（2~10 区间）✓**
+- **flat16 频响（16x 超采样平坦度）：100/400/1k/4k/8k/15k Hz 全频段 -0.08~-0.11dB ✓**（与 beta0.5 基线一致 → 超采样链未变动）
+- **Clarity 峰锁定：锁定后最差偏移 0Hz（<250）✓；刺耳峰限增益 6.6dB（2~10 区间）✓**
 - 随机压力 4 种块大小 × 1500 块（共 6000 块）+ 每 200 块 OS 超采样热切换/全局增益变化 + 每 50 块随机 EQ 参数：无 NaN 无崩溃 ✓
-- mono 通道 ✓；电平表 in/out -15.1dB、静音衰减 -60 ✓
+- mono 通道 ✓；电平表 in/out -15.1dB、静音衰减 -60.0 ✓；指示灯只跟输入（comp100% 时 in -15.0 不动、out -34.9）✓
 
 ## 10. 用户联系
 
