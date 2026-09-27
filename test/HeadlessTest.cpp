@@ -788,11 +788,12 @@ int main()
               std::abs(defRms - 1.0f) < 0.02f && defThd < -70.0f ? "OK" : "BAD");
 
         // 逐模块开启定位失真源
-        const auto runProbe = [&](const char* label, auto&& setup)
+        const auto runProbe = [&](const char* label, auto&& setup) -> float
         {
             setup();
             const auto [r, t] = probeMeasure();
             TRACE("fidelity %s: rmsRatio=%.4f THD=%.1f dB\n", label, r, t);
+            return t;
         };
         runProbe("sat FET 100", [&] { *apvts.getRawParameterValue("satTypeA") = 1.0f;
                                       *apvts.getRawParameterValue("satAmountA") = 100.0f; });
@@ -806,6 +807,22 @@ int main()
         runProbe("reverb 60", [&] { *apvts.getRawParameterValue("edgeAmount") = 0.0f;
                                     *apvts.getRawParameterValue("reverbAmount") = 60.0f; });
         *apvts.getRawParameterValue("reverbAmount") = 0.0f;
+        // 诊断 + 断言：全部模块旁通。若 THD 与 default 一致 → 参数为 0 时全链确实透明，
+        // 残余 THD 来自超采样 FIR 链本身（非任何模块）
+        const float bypThd = runProbe("all bypass", [&] {
+            *apvts.getRawParameterValue("eqBypass")     = 1.0f;
+            *apvts.getRawParameterValue("compBypass")   = 1.0f;
+            *apvts.getRawParameterValue("deEssBypass")  = 1.0f;
+            *apvts.getRawParameterValue("satBypass")    = 1.0f;
+            *apvts.getRawParameterValue("edgeBypass")   = 1.0f;
+            *apvts.getRawParameterValue("reverbBypass") = 1.0f;
+        });
+        for (auto id : { "eqBypass", "compBypass", "deEssBypass", "satBypass", "edgeBypass", "reverbBypass" })
+            *apvts.getRawParameterValue(id) = 0.0f;
+        TRACE("fidelity transparency: default=%.1f dB vs all-bypass=%.1f dB %s\n",
+              defThd, bypThd, std::abs(bypThd - defThd) < 1.0f ? "OK" : "BAD(模块未透明)");
+        if (std::abs(bypThd - defThd) > 1.0f)
+            return 1;
     }
 
     // 电平表检查：0.25 幅度正弦（RMS -15dBFS）→ 输入/输出电平表应 ≈ -15dB；静音应衰减
