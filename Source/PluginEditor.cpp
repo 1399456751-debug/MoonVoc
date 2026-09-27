@@ -387,6 +387,27 @@ void MoonVocEditor::renderBackground()
         arc.addCentredArc(-40.0f, (float) h + 40.0f, 200.0f, 200.0f, 0.0f, 0.0f, 1.4f, true);
         g.strokePath(arc, juce::PathStrokeType(40.0f));
     }
+
+    // 毛玻璃底：1/4 降采样 → 高斯模糊 → 放回原尺寸。
+    // 只在 renderBackground（resized）时算一次，拖旋钮/重绘零开销。
+    {
+        const int sw = jmax(1, w / 4), sh = jmax(1, h / 4);
+        juce::Image small(juce::Image::ARGB, sw, sh, true);
+        {
+            juce::Graphics sg(small);
+            sg.drawImage(bgCache, juce::Rectangle<int>(0, 0, sw, sh).toFloat(),
+                         juce::RectanglePlacement::stretchToFit);
+        }
+        juce::ImageConvolutionKernel kernel(17);
+        kernel.createGaussianBlur(8.0f);
+        juce::Image blurred(juce::Image::ARGB, sw, sh, true);
+        kernel.applyToImage(blurred, small, juce::Rectangle<int>(0, 0, sw, sh));
+
+        bgBlurCache = juce::Image(juce::Image::ARGB, w, h, true);
+        juce::Graphics bg(bgBlurCache);
+        bg.drawImage(blurred, juce::Rectangle<int>(0, 0, w, h).toFloat(),
+                     juce::RectanglePlacement::stretchToFit);
+    }
 }
 
 // 布局自检：打印关键控件 bounds + 卡片归属/几何断言（FAIL 期望全 0）
@@ -656,14 +677,31 @@ void MoonVocEditor::paintCanvas(juce::Graphics& g)
         // 投影（向下偏 3、向外扩 2）
         g.setColour(Theme::shadow);
         g.fillRoundedRectangle(rf.translated(0.0f, 3.0f).expanded(2.0f), 18.0f);
-        // 卡片体
-        g.setColour(bgC);
-        g.fillRoundedRectangle(rf, 16.0f);
-        // 描边（模块深色 30%）
+
+        // 毛玻璃：裁剪圆角 → 贴模糊背景 → 叠半透明白（保留卡片色相）
+        {
+            juce::Graphics::ScopedSaveState state(g);
+            juce::Path clip;
+            clip.addRoundedRectangle(rf, 16.0f);
+            g.reduceClipRegion(clip);
+            if (bgBlurCache.isValid())
+                g.drawImageAt(bgBlurCache, 0, 0);
+            g.setColour(bgC.withAlpha(0.62f));
+            g.fillRect(r);
+
+            // 玻璃高光：上半部白色渐隐
+            juce::ColourGradient gloss(juce::Colours::white.withAlpha(0.40f),
+                                       rf.getCentreX(), rf.getY(),
+                                       juce::Colours::white.withAlpha(0.0f),
+                                       rf.getCentreX(), rf.getY() + rf.getHeight() * 0.45f, false);
+            g.setGradientFill(gloss);
+            g.fillRect(r);
+        }
+
+        // 描边（模块深色 30%）+ 顶部内高光线
         g.setColour(deepC.withAlpha(0.30f));
         g.drawRoundedRectangle(rf, 16.0f, 1.2f);
-        // 顶部内高光线
-        g.setColour(juce::Colours::white.withAlpha(0.35f));
+        g.setColour(juce::Colours::white.withAlpha(0.45f));
         g.drawHorizontalLine(r.getY() + 1, (float) (r.getX() + 14), (float) (r.getRight() - 14));
     };
     drawCard(cardGlobal,  Theme::cardGlobal,  Theme::cardGlobalDeep);

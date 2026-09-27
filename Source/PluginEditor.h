@@ -69,6 +69,7 @@ private:
     float indicatorPhase = 0.0f; // 指示灯闪烁 + 背景呼吸相位
     float meterPeakIn = -60.0f, meterPeakOut = -60.0f; // 电平峰值保持
     juce::Image bgCache;   // 静态背景缓存（渐变 + 抽象装饰），resized 重渲染
+    juce::Image bgBlurCache; // 毛玻璃底（背景模糊版），只在 resized 重算
 
     // 卡片区域（resized 记录，paint 绘制）
     juce::Rectangle<int> cardGlobal, cardReverb, cardEq, cardComp, cardDeEss, cardSat, cardEdge;

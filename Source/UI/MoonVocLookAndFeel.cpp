@@ -53,6 +53,10 @@ void MoonVocLookAndFeel::drawRotarySlider(juce::Graphics& g, int x, int y, int w
     {
         juce::Path trackArc;
         trackArc.addCentredArc(centre.x, centre.y, arcR, arcR, 0.0f, trackFrom, trackTo, true);
+        // 轨道外发光（宽而淡的一层）
+        g.setColour(arcCol.withAlpha(0.05f));
+        g.strokePath(trackArc, juce::PathStrokeType(11.0f, juce::PathStrokeType::curved,
+                                                    juce::PathStrokeType::rounded));
         g.setColour(arcCol.withAlpha(0.16f));
         g.strokePath(trackArc, juce::PathStrokeType(4.0f, juce::PathStrokeType::curved,
                                                     juce::PathStrokeType::rounded));
@@ -65,6 +69,19 @@ void MoonVocLookAndFeel::drawRotarySlider(juce::Graphics& g, int x, int y, int w
         const float a1 = jmax(0.0f, valueAngle);
         juce::Path valArc;
         valArc.addCentredArc(centre.x, centre.y, arcR, arcR, 0.0f, a0, a1, true);
+
+        // 外发光：3 层由宽到窄的光晕叠加（拖动/悬停时再加强 60%）
+        // 真实的发光感靠"宽而淡 + 窄而亮"的层次，不是简单描个亮边
+        const float glowBoost = slider.isMouseOverOrDragging() ? 1.6f : 1.0f;
+        const float glowW[3] { 14.0f, 10.0f, 7.0f };
+        const float glowA[3] { 0.05f, 0.10f, 0.18f };
+        for (int i = 0; i < 3; ++i)
+        {
+            g.setColour(arcCol.withAlpha(jmin(1.0f, glowA[i] * glowBoost)));
+            g.strokePath(valArc, juce::PathStrokeType(glowW[i], juce::PathStrokeType::curved,
+                                                      juce::PathStrokeType::rounded));
+        }
+
         const juce::Point<float> p0 { centre.x + arcR * std::sin(a0), centre.y - arcR * std::cos(a0) };
         const juce::Point<float> p1 { centre.x + arcR * std::sin(a1), centre.y - arcR * std::cos(a1) };
         juce::ColourGradient grad(arcCol, p0, arcCol.brighter(0.25f), p1, false);
