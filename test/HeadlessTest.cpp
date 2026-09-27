@@ -1133,6 +1133,109 @@ int main()
         TRACE("deess v080: OK\n");
     }
 
+    // Clarity 单宽峰验证：用带 formant 包络的谐波音测真实频响。
+    // （单频扫描测不出智能 EQ 的形状 —— 检测器会跟着测试频点走，每个点都被当成峰值；
+    //   频谱平坦的谐波音也不行 —— 没有峰，检测器不触发。必须同时有密集谐波 + 窄共振峰。）
+    // 断言：① 峰值贴合旋钮值（多峰并联会叠出超额增益：旧 3 峰版 12dB 旋钮实测 +17dB）
+    //       ② 相邻点差 < 3dB（曲线平滑，无平台/陡边）
+    {
+        processor.prepareToPlay(48000.0, 512);
+        const auto& a = processor.apvts;
+        for (auto id : { "eqLowBoost", "eqDeboxCut", "eqClarityBoost", "eqAirBoost", "eqAirFreq",
+                         "compAmount", "compMakeup", "reverbAmount", "reverbMode",
+                         "satTypeA", "satAmountA", "satTypeB", "satAmountB",
+                         "edgeAmount", "dsAmount", "dsFocus",
+                         "eqBypass", "compBypass", "satBypass", "edgeBypass", "reverbBypass", "deEssBypass",
+                         "inputGain", "outputGain", "headroom", "oversampling" })
+            *a.getRawParameterValue(id) = 0.0f;
+        *a.getRawParameterValue("eqClarityBoost") = 12.0f;
+
+        constexpr float f0 = 187.5f;      // 512 样本 @48k = 2 周期（相干）
+        constexpr int kMin = 11, kMax = 53; // 谐波次数 → 2062 ~ 9937 Hz
+        constexpr int nHarm = kMax - kMin + 1;
+
+        // 预计算每个采样位置的各谐波 sin/cos（512 样本周期重复）
+        std::vector<std::vector<double>> sinTab(nHarm, std::vector<double>(512, 0.0));
+        std::vector<std::vector<double>> cosTab(nHarm, std::vector<double>(512, 0.0));
+        for (int h = 0; h < nHarm; ++h)
+            for (int s = 0; s < 512; ++s)
+            {
+                const double ph = 2.0 * 3.14159265358979 * f0 * (kMin + h) * (double) s / 48000.0;
+                sinTab[h][s] = std::sin(ph);
+                cosTab[h][s] = std::cos(ph);
+            }
+
+        // 谐波幅度按"人声共振峰"包络（3 个 formant），否则频谱太平检测器不触发
+        std::vector<double> harmAmp(nHarm, 0.0);
+        for (int h = 0; h < nHarm; ++h)
+        {
+            const double f = f0 * (kMin + h);
+            auto formant = [&](double fc, double bw, double g)
+            { return g / (1.0 + std::pow((f - fc) / bw, 2.0)); };
+            // formant 带宽取真实人声量级（200~400Hz）—— 太宽在候选带尺度上就没有"峰"可检
+            harmAmp[h] = formant(700.0, 200.0, 1.0)
+                       + formant(2800.0, 350.0, 0.9)
+                       + formant(5200.0, 400.0, 0.7) + 0.05;
+        }
+
+        juce::AudioBuffer<float> buf(2, 512), inCopy(2, 512);
+        juce::MidiBuffer midi;
+        // 完整 Goertzel（in-phase + quadrature）→ 取幅度，与滤波器相位延迟无关
+        std::vector<double> inRe(nHarm, 0.0), inIm(nHarm, 0.0), outRe(nHarm, 0.0), outIm(nHarm, 0.0);
+        const int warmup = 400, measure = 200;
+
+        for (int b = 0; b < warmup + measure; ++b)
+        {
+            for (int c = 0; c < 2; ++c)
+                for (int s = 0; s < 512; ++s)
+                {
+                    double v = 0.0;
+                    for (int h = 0; h < nHarm; ++h)
+                        v += harmAmp[h] * std::sin(2.0 * 3.14159265358979 * f0 * (kMin + h)
+                                                  * (double) (b * 512 + s) / 48000.0);
+                    buf.setSample(c, s, (float) (0.01 * v));
+                }
+            inCopy.makeCopyOf(buf);
+            processor.processBlock(buf, midi);
+            if (b >= warmup)
+                for (int c = 0; c < 2; ++c)
+                    for (int s = 0; s < 512; ++s)
+                    {
+                        const float xi = inCopy.getSample(c, s);
+                        const float xo = buf.getSample(c, s);
+                        for (int h = 0; h < nHarm; ++h)
+                        {
+                            inRe[h]  += xi * cosTab[h][s];
+                            inIm[h]  += xi * sinTab[h][s];
+                            outRe[h] += xo * cosTab[h][s];
+                            outIm[h] += xo * sinTab[h][s];
+                        }
+                    }
+        }
+
+        TRACE("--- clarity harmonic response (12 dB) ---\n");
+        float peakDb = -100.0f, maxJump = 0.0f, prevDb = 0.0f;
+        bool firstPoint = true;
+        for (int h = 0; h < nHarm; h += 3)
+        {
+            const float f = f0 * (kMin + h);
+            const double ampIn  = std::sqrt(inRe[h] * inRe[h] + inIm[h] * inIm[h]);
+            const double ampOut = std::sqrt(outRe[h] * outRe[h] + outIm[h] * outIm[h]);
+            const float db = (float) (20.0 * std::log10(jmax(1.0e-6, ampOut / (ampIn + 1.0e-12))));
+            TRACE("clarity %5.0f Hz : %+.2f dB\n", f, db);
+            peakDb = jmax(peakDb, db);
+            if (! firstPoint)
+                maxJump = jmax(maxJump, std::abs(db - prevDb));
+            prevDb = db;
+            firstPoint = false;
+        }
+        const bool shapeOk = peakDb < 13.0f && peakDb > 9.0f && maxJump < 3.0f;
+        TRACE("clarity shape: peak=%+.1f dB (knob 12) maxJump=%.1f dB %s\n",
+              peakDb, maxJump, shapeOk ? "OK" : "BAD(峰值叠加或曲线不平滑)");
+        if (! shapeOk) return 1;
+        TRACE("--- harmonic end ---\n");
+    }
+
     juce::Logger::writeToLog("Headless test passed (all blocks finite)");
     return 0;
 }

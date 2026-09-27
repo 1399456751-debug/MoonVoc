@@ -28,7 +28,10 @@ public:
 private:
     struct SmartBand
     {
-        void prepare(const juce::dsp::ProcessSpec& spec, const float* cands, float fs, float defaultFreq);
+        // maxPeaks/qLo/qHi 按段配置：Debox 多峰窄 Q；Clarity 单宽峰（窄峰会并联成"平台+陡边"，
+        // 频响出现棱角 → 听感毛糙。单宽峰给出平滑钟形）
+        void prepare(const juce::dsp::ProcessSpec& spec, const float* cands, float fs,
+                     float defaultFreq, int maxP = 3, float qLo = 0.9f, float qHi = 3.5f);
         void reset();
         void runDetectors(const juce::dsp::AudioBlock<const float>& monoBlock,
                           juce::AudioBuffer<float>& detectBuffer, float fs);
@@ -53,6 +56,8 @@ private:
         int lockedIndex = -1;
         float lockedBaseline = 0.0f;
         int unlockTimer = 0;
+        int maxPeaks = 3;               // 本段最多几路并行峰
+        float qMin = 0.9f, qMax = 3.5f; // Q 映射范围（对比度 2→qMin，5→qMax）
         float targetContrast[3] { 0.0f, 0.0f, 0.0f }; // 各峰对比度（限增益用）
         const float* candidates = nullptr; // 候选频率（系数重写用）
     };

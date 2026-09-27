@@ -16,7 +16,7 @@ namespace
     // 共振对比度阈值：高于它才算脏点；干净时用默认中心宽 Q 温和处理
     constexpr float kResonanceThreshold = 2.0f;
     // 对比度 → Q 映射（2.0 → 0.9 宽，5.0+ → 3.5 窄）
-    constexpr float kQMin = 0.9f, kQMax = 3.5f;
+    // Q 范围改为每段可配（SmartBand::qMin/qMax）：Debox 窄 Q 削共振，Clarity 宽 Q 求平滑
     // 最多同时处理的峰数
     constexpr int kMaxPeaks = 3;
     // 峰间最小间距（带数，避免双峰过近）
@@ -41,12 +41,16 @@ VoiceEq::VoiceEq(juce::AudioProcessorValueTreeState& apvts, std::atomic<double>&
 }
 
 void VoiceEq::SmartBand::prepare(const juce::dsp::ProcessSpec& spec, const float* cands,
-                                 float fs, float defaultFreqValue)
+                                 float fs, float defaultFreqValue,
+                                 int maxP, float qLo, float qHi)
 {
     using Coeffs = juce::dsp::IIR::Coefficients<float>;
 
     defaultFreq = defaultFreqValue;
     candidates = cands;
+    maxPeaks = jlimit(1, kMaxPeaks, maxP);
+    qMin = qLo;
+    qMax = qHi;
 
     // 检测带通：Q=8 窄带（分辨率高才能分辨共振峰）；系数预分配，每块按当前 OS 率重写
     for (int i = 0; i < 13; ++i)
@@ -188,7 +192,7 @@ void VoiceEq::SmartBand::detect(const float* cands)
             float d = (denom > 1.0e-9f) ? 0.5f * (l - r) / denom : 0.0f;
             d = jlimit(-0.5f, 0.5f, d);
             targetFreq[0] = cands[li] * std::exp(d * std::log(cands[li + 1] / cands[li]));
-            targetQ[0] = 0.9f;                                   // 锁定期 Q 温和固定
+            targetQ[0] = qMin;                                   // 锁定期 Q 固定在下限（最宽）
             targetContrast[0] = le / ((ema[li - 1] + ema[li + 1]) * 0.5f + 1.0e-12f);
             active[0] = true;
             pickedIdx[0] = li;
@@ -207,7 +211,7 @@ void VoiceEq::SmartBand::detect(const float* cands)
 
     // ---- 填充其余路：候选峰按对比度选，间距去重（含锁定峰） ----
     int picked = lockHeld ? 1 : 0;
-    for (int a = 0; a < numPeaks && picked < kMaxPeaks; ++a)
+    for (int a = 0; a < numPeaks && picked < maxPeaks; ++a)
     {
         const int i = peaks[a].index;
         bool tooClose = false;
@@ -226,7 +230,7 @@ void VoiceEq::SmartBand::detect(const float* cands)
         float d = (denom > 1.0e-9f) ? 0.5f * (l - r) / denom : 0.0f;
         d = jlimit(-0.5f, 0.5f, d);
         targetFreq[picked] = cands[i] * std::exp(d * std::log(cands[i + 1] / cands[i]));
-        targetQ[picked] = juce::jmap(peaks[a].contrast, kResonanceThreshold, 5.0f, kQMin, kQMax);
+        targetQ[picked] = juce::jmap(peaks[a].contrast, kResonanceThreshold, 5.0f, qMin, qMax);
         targetContrast[picked] = peaks[a].contrast;
         active[picked] = true;
         pickedIdx[picked] = i;
@@ -288,8 +292,8 @@ void VoiceEq::prepare(const juce::dsp::ProcessSpec& spec)
     buildFilters(airFilters,      airCoeffs);
 
     // 多峰智能段
-    deboxBand.prepare(spec, deboxCandidates, (float) fs, 400.0f);
-    clarityBand.prepare(spec, clarityCandidates, (float) fs, 4000.0f);
+    deboxBand.prepare(spec, deboxCandidates, (float) fs, 400.0f);                       // 多峰窄 Q（去共振）
+    clarityBand.prepare(spec, clarityCandidates, (float) fs, 4000.0f, 1, 0.7f, 1.0f);   // 单宽峰（平滑钟形）
 
     // Thick 基频检测器（Q=4 宽带，覆盖基频带宽）；系数预分配，每块按当前 OS 率重写
     for (int i = 0; i < 7; ++i)
