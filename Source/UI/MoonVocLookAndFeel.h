@@ -30,6 +30,8 @@ namespace Theme
     const juce::Colour cardEqDeep     { 0xff7da172 };
     const juce::Colour cardComp       { 0xffeaf1f6 }; // 雾霾蓝
     const juce::Colour cardCompDeep   { 0xff6f9bbd };
+    const juce::Colour cardDeEss      { 0xffe9f2f0 }; // 青瓷（去齿音）
+    const juce::Colour cardDeEssDeep  { 0xff6f9a92 };
     const juce::Colour cardSat        { 0xfff7efe3 }; // 焦糖杏
     const juce::Colour cardSatDeep    { 0xffc79462 };
     const juce::Colour cardEdge       { 0xfff1edf5 }; // 香芋紫

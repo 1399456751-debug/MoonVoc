@@ -22,8 +22,8 @@ public:
     // 测试用：手动推进一次 timer 逻辑（离线快照更新电平表/锁频标签）
     void demoTick() { timerCallback(); }
 
-    static constexpr int kDesignW = 1280; // 设计基准宽度
-    static constexpr int kDesignH = 720;  // 设计基准高度
+    static constexpr int kDesignW = 1496; // 设计基准宽度（6 卡横排）
+    static constexpr int kDesignH = 672;  // 设计基准高度（去掉底部大片空白）
 
 private:
     void timerCallback() override;
@@ -71,14 +71,15 @@ private:
     juce::Image bgCache;   // 静态背景缓存（渐变 + 抽象装饰），resized 重渲染
 
     // 卡片区域（resized 记录，paint 绘制）
-    juce::Rectangle<int> cardGlobal, cardReverb, cardEq, cardComp, cardSat, cardEdge;
+    juce::Rectangle<int> cardGlobal, cardReverb, cardEq, cardComp, cardDeEss, cardSat, cardEdge;
     juce::Rectangle<int> cardMonitor, cardOs;
     juce::Rectangle<int> meterInRect, meterOutRect; // 电平表位置（resized 计算，paint 绘制）
     juce::Rectangle<int> indicatorRect;             // 指示灯位置（cardGlobal 右端）
     juce::Rectangle<int> grCompRect;                // GR 表（压缩）
+    juce::Rectangle<int> grDeEssRect;               // GR 表（去齿音）
 
     // 区段标题
-    juce::Label sectionGlobal, sectionEq, sectionComp, sectionReverb, sectionSat, sectionEdge;
+    juce::Label sectionGlobal, sectionEq, sectionComp, sectionDeEss, sectionReverb, sectionSat, sectionEdge;
     juce::Label sectionMonitor, sectionOs;
 
     // 全局
@@ -99,6 +100,10 @@ private:
     juce::Slider compAmountSlider, compMakeupSlider;
     juce::Label compAmountLabel, compMakeupLabel;
 
+    // 去齿音（链路位于压缩后）
+    juce::Slider dsAmountSlider, dsFocusSlider;
+    juce::Label dsAmountLabel, dsFocusLabel;
+
     // 混响（链路最后）
     juce::Slider reverbSlider;
     juce::Label reverbLabel;
@@ -114,7 +119,7 @@ private:
     juce::Label edgeLabel;
 
     // 旁通开关（每模块一个）
-    juce::ToggleButton eqBypassBtn, compBypassBtn, satBypassBtn, edgeBypassBtn, reverbBypassBtn;
+    juce::ToggleButton eqBypassBtn, compBypassBtn, deEssBypassBtn, satBypassBtn, edgeBypassBtn, reverbBypassBtn;
 
     // 设置（语言 / 大字 / 缩放）
     juce::Label sectionSettings;
@@ -126,9 +131,10 @@ private:
     std::unique_ptr<SliderAttachment> inputGainAtt, headroomAtt, outputGainAtt;
     std::unique_ptr<SliderAttachment> boostAtt, deboxAtt, clarityAtt, airAtt;
     std::unique_ptr<SliderAttachment> compAmountAtt, compMakeupAtt, reverbAmountAtt;
+    std::unique_ptr<SliderAttachment> dsAmountAtt, dsFocusAtt;
     std::unique_ptr<SliderAttachment> satAmountAAtt, satAmountBAtt, edgeAtt;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> oversamplingAtt, airFreqAtt, compModeAtt, reverbModeAtt, satTypeAAtt, satTypeBAtt;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> eqBypassAtt, compBypassAtt, satBypassAtt, edgeBypassAtt, reverbBypassAtt;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> eqBypassAtt, compBypassAtt, deEssBypassAtt, satBypassAtt, edgeBypassAtt, reverbBypassAtt;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> langAtt, scaleAtt;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> largeFontAtt;
 

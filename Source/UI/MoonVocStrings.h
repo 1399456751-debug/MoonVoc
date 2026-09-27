@@ -8,10 +8,11 @@ namespace Strings
 {
     enum Key
     {
-        kGlobal, kEq, kComp, kReverb, kSat, kEdge, kMonitor, kEngine, kSettings,
+        kGlobal, kEq, kComp, kDeEss, kReverb, kSat, kEdge, kMonitor, kEngine, kSettings,
         kInput, kHeadroom, kOutput,
         kThick, kDebox, kClarity, kAir, kAirFreq16, kAirFreq22,
         kCompression, kMakeup, kStylePop, kStyleRap,
+        kDeEssAmount, kDeEssFocus,
         kReverbAmt, kModePop, kModeRap,
         kDriveA, kDriveB,
         kBypass, kOversampling, kLanguage, kLargeFont, kScale, kLevel
@@ -43,6 +44,9 @@ namespace Strings
             case kMakeup:      return zh ? S8("补偿")     : S8("Makeup");
             case kStylePop:    return zh ? S8("柔光")     : S8("Glow");
             case kStyleRap:    return zh ? S8("锻造")     : S8("Forge");
+            case kDeEss:       return zh ? S8("去齿音")   : S8("De-Ess");
+            case kDeEssAmount: return zh ? S8("去齿音量") : S8("De-Ess");
+            case kDeEssFocus:  return zh ? S8("齿音频段") : S8("Focus");
             case kReverbAmt:   return zh ? S8("混响量")   : S8("Reverb");
             case kModePop:     return zh ? S8("薄纱")     : S8("Veil");
             case kModeRap:     return zh ? S8("深渊")     : S8("Abyss");

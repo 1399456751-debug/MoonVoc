@@ -6,7 +6,7 @@ namespace
     constexpr int kEdge      = 16;   // 外边距
     constexpr int kGap       = 16;   // 卡片间距
     constexpr int kPad       = 20;   // 卡片内边距
-    constexpr int kKnobHero  = 120;  // hero 旋钮直径（Compression / Edge / Reverb）
+    constexpr int kKnobHero  = 132;  // hero 旋钮直径（Compression / Edge / Reverb）
     constexpr int kKnobStd   = 64;   // 标准旋钮直径
     constexpr int kKnobGlob  = 56;   // 全局条旋钮直径
     constexpr int kTbH       = 18;   // 旋钮下方数值框条高（含在 slider bounds 内）
@@ -29,6 +29,7 @@ MoonVocEditor::MoonVocEditor(MoonVocProcessor& p)
     setupSectionTitle(sectionGlobal,  Strings::kGlobal,   Theme::cardGlobalDeep);
     setupSectionTitle(sectionEq,      Strings::kEq,       Theme::cardEqDeep);
     setupSectionTitle(sectionComp,    Strings::kComp,     Theme::cardCompDeep);
+    setupSectionTitle(sectionDeEss,   Strings::kDeEss,    Theme::cardDeEssDeep);
     setupSectionTitle(sectionReverb,  Strings::kReverb,   Theme::cardReverbDeep);
     setupSectionTitle(sectionSat,     Strings::kSat,      Theme::cardSatDeep);
     setupSectionTitle(sectionEdge,    Strings::kEdge,     Theme::cardEdgeDeep);
@@ -66,6 +67,10 @@ MoonVocEditor::MoonVocEditor(MoonVocProcessor& p)
     setupSlider(compAmountSlider, compAmountLabel, Strings::kCompression, Theme::cardCompDeep);
     setupSlider(compMakeupSlider, compMakeupLabel, Strings::kMakeup,      Theme::cardCompDeep);
 
+    // 去齿音（链路位于压缩后）
+    setupSlider(dsAmountSlider, dsAmountLabel, Strings::kDeEssAmount, Theme::cardDeEssDeep);
+    setupSlider(dsFocusSlider,  dsFocusLabel,  Strings::kDeEssFocus,  Theme::cardDeEssDeep);
+
     // 混响（链路最后）
     setupSlider(reverbSlider, reverbLabel, Strings::kReverbAmt, Theme::cardReverbDeep);
     setupCombo(reverbModeBox, { "Pop", "Rap" });
@@ -84,6 +89,7 @@ MoonVocEditor::MoonVocEditor(MoonVocProcessor& p)
     const juce::String bypText = Strings::get(Strings::kBypass, true);
     setupButton(eqBypassBtn,     bypText);
     setupButton(compBypassBtn,   bypText);
+    setupButton(deEssBypassBtn,  bypText);
     setupButton(satBypassBtn,    bypText);
     setupButton(edgeBypassBtn,   bypText);
     setupButton(reverbBypassBtn, bypText);
@@ -120,6 +126,10 @@ MoonVocEditor::MoonVocEditor(MoonVocProcessor& p)
     compAmountAtt  = std::make_unique<SliderAttachment>(processorRef.apvts, "compAmount", compAmountSlider);
     compMakeupAtt  = std::make_unique<SliderAttachment>(processorRef.apvts, "compMakeup", compMakeupSlider);
 
+    // 去齿音
+    dsAmountAtt = std::make_unique<SliderAttachment>(processorRef.apvts, "dsAmount", dsAmountSlider);
+    dsFocusAtt  = std::make_unique<SliderAttachment>(processorRef.apvts, "dsFocus",  dsFocusSlider);
+
     // 混响
     reverbAmountAtt = std::make_unique<SliderAttachment>(processorRef.apvts, "reverbAmount", reverbSlider);
     reverbModeAtt   = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(processorRef.apvts, "reverbMode", reverbModeBox);
@@ -136,6 +146,7 @@ MoonVocEditor::MoonVocEditor(MoonVocProcessor& p)
     // 旁通 + 设置
     eqBypassAtt     = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(processorRef.apvts, "eqBypass",     eqBypassBtn);
     compBypassAtt   = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(processorRef.apvts, "compBypass",   compBypassBtn);
+    deEssBypassAtt  = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(processorRef.apvts, "deEssBypass",  deEssBypassBtn);
     satBypassAtt    = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(processorRef.apvts, "satBypass",    satBypassBtn);
     edgeBypassAtt   = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(processorRef.apvts, "edgeBypass",   edgeBypassBtn);
     reverbBypassAtt = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(processorRef.apvts, "reverbBypass", reverbBypassBtn);
@@ -238,7 +249,7 @@ void MoonVocEditor::applyLanguage()
     setItems(satTypeBBox, satTypes);
 
     const juce::String byp = Strings::get(Strings::kBypass, zh);
-    for (auto* b : { &eqBypassBtn, &compBypassBtn, &satBypassBtn, &edgeBypassBtn, &reverbBypassBtn })
+    for (auto* b : { &eqBypassBtn, &compBypassBtn, &deEssBypassBtn, &satBypassBtn, &edgeBypassBtn, &reverbBypassBtn })
         b->setButtonText(byp);
     largeFontBtn.setButtonText(Strings::get(Strings::kLargeFont, zh));
 
@@ -388,6 +399,7 @@ void MoonVocEditor::dumpLayout() const
     print("cardGlobal",  cardGlobal);
     print("cardEq",      cardEq);
     print("cardComp",    cardComp);
+    print("cardDeEss",   cardDeEss);
     print("cardSat",     cardSat);
     print("cardEdge",    cardEdge);
     print("cardReverb",  cardReverb);
@@ -400,17 +412,23 @@ void MoonVocEditor::dumpLayout() const
         if (! ok) { std::printf("FAIL: %s\n", what); ++fail; }
     };
 
-    // 卡片序与间距：5 卡横排 y/h 全等、相邻间距全 16、混响在最右
-    check(cardEq.getY() == cardComp.getY() && cardComp.getY() == cardSat.getY()
-          && cardSat.getY() == cardEdge.getY() && cardEdge.getY() == cardReverb.getY(), "5 cards y equal");
-    check(cardEq.getHeight() == cardComp.getHeight() && cardComp.getHeight() == cardSat.getHeight()
-          && cardSat.getHeight() == cardEdge.getHeight() && cardEdge.getHeight() == cardReverb.getHeight(), "5 cards h equal");
+    // 卡片序与间距：6 卡横排 y/h 全等、相邻间距全 16、混响在最右
+    check(cardEq.getY() == cardComp.getY() && cardComp.getY() == cardDeEss.getY()
+          && cardDeEss.getY() == cardSat.getY() && cardSat.getY() == cardEdge.getY()
+          && cardEdge.getY() == cardReverb.getY(), "6 cards y equal");
+    check(cardEq.getHeight() == cardComp.getHeight() && cardComp.getHeight() == cardDeEss.getHeight()
+          && cardDeEss.getHeight() == cardSat.getHeight() && cardSat.getHeight() == cardEdge.getHeight()
+          && cardEdge.getHeight() == cardReverb.getHeight(), "6 cards h equal");
     check(cardComp.getX() - cardEq.getRight() == kGap, "gap eq-comp==16");
-    check(cardSat.getX() - cardComp.getRight() == kGap, "gap comp-sat==16");
+    check(cardDeEss.getX() - cardComp.getRight() == kGap, "gap comp-deess==16");
+    check(cardSat.getX() - cardDeEss.getRight() == kGap, "gap deess-sat==16");
     check(cardEdge.getX() - cardSat.getRight() == kGap, "gap sat-edge==16");
     check(cardReverb.getX() - cardEdge.getRight() == kGap, "gap edge-reverb==16");
+    check(cardReverb.getRight() <= kDesignW - kEdge, "chain fits width");
+    check(kDesignH == 672, "design height 672");
+    check(cardMonitor.getBottom() + kGap + 20 <= kDesignH, "footer fits");
     // 卡片 rect %4==0（4px 网格）
-    for (auto* c : { &cardGlobal, &cardEq, &cardComp, &cardSat, &cardEdge, &cardReverb, &cardMonitor, &cardOs })
+    for (auto* c : { &cardGlobal, &cardEq, &cardComp, &cardDeEss, &cardSat, &cardEdge, &cardReverb, &cardMonitor, &cardOs })
         check(c->getX() % 4 == 0 && c->getY() % 4 == 0 && c->getWidth() % 4 == 0 && c->getHeight() % 4 == 0,
               "card rect %4==0");
 
@@ -431,6 +449,9 @@ void MoonVocEditor::dumpLayout() const
     owned(cardComp, "compModeBox", compModeBox.getBounds());
     owned(cardComp, "compAmountSlider", compAmountSlider.getBounds());
     owned(cardComp, "compMakeupSlider", compMakeupSlider.getBounds());
+    owned(cardDeEss, "dsAmountSlider", dsAmountSlider.getBounds());
+    owned(cardDeEss, "dsFocusSlider", dsFocusSlider.getBounds());
+    owned(cardDeEss, "deEssBypassBtn", deEssBypassBtn.getBounds());
     owned(cardSat, "satTypeABox", satTypeABox.getBounds());
     owned(cardSat, "satAmountASlider", satAmountASlider.getBounds());
     owned(cardSat, "satTypeBBox", satTypeBBox.getBounds());
@@ -451,6 +472,7 @@ void MoonVocEditor::dumpLayout() const
     owned(cardMonitor, "meterInRect", meterInRect);
     owned(cardMonitor, "meterOutRect", meterOutRect);
     owned(cardMonitor, "grCompRect", grCompRect);
+    owned(cardMonitor, "grDeEssRect", grDeEssRect);
     owned(cardOs, "oversamplingBox", oversamplingBox.getBounds());
 
     // 几何专项：EQ 两行两列（Thick/De-Box 上行，Clarity/Air 下行）
@@ -462,21 +484,25 @@ void MoonVocEditor::dumpLayout() const
     check(std::abs(airFreqBox.getBounds().getCentreX() - airSlider.getBounds().getCentreX()) <= 1,
           "airFreq centred under air");
     check(compAmountSlider.getBounds().getWidth() == kKnobHero
-          && compAmountSlider.getBounds().getHeight() == kKnobHero + kTbH, "comp hero 120+tb");
+          && compAmountSlider.getBounds().getHeight() == kKnobHero + kTbH, "comp hero size");
     check(edgeSlider.getBounds().getWidth() == kKnobHero
-          && edgeSlider.getBounds().getHeight() == kKnobHero + kTbH, "edge hero 120+tb");
+          && edgeSlider.getBounds().getHeight() == kKnobHero + kTbH, "edge hero size");
     check(reverbSlider.getBounds().getWidth() == kKnobHero
-          && reverbSlider.getBounds().getHeight() == kKnobHero + kTbH, "reverb hero 120+tb");
+          && reverbSlider.getBounds().getHeight() == kKnobHero + kTbH, "reverb hero size");
+    check(dsAmountSlider.getBounds().getWidth() == dsFocusSlider.getBounds().getWidth(),
+          "deess knobs equal width");
+    check(dsAmountSlider.getBounds().getY() == dsFocusSlider.getBounds().getY(),
+          "deess knobs same y");
     check(std::abs(reverbModeBox.getBounds().getCentreX() - reverbSlider.getBounds().getCentreX()) <= 1,
           "reverbMode centred over reverb");
     check(std::abs(satTypeABox.getBounds().getCentreX() - satAmountASlider.getBounds().getCentreX()) <= 1,
           "satA aligned");
     check(std::abs(satTypeBBox.getBounds().getCentreX() - satAmountBSlider.getBounds().getCentreX()) <= 1,
           "satB aligned");
-    check(meterInRect.getY() < meterOutRect.getY() && meterOutRect.getY() < grCompRect.getY(),
-          "meter rows ascending");
-    check(meterInRect.getWidth() == meterOutRect.getWidth() && meterOutRect.getWidth() == grCompRect.getWidth(),
-          "meter widths equal");
+    check(meterInRect.getY() < meterOutRect.getY() && meterOutRect.getY() < grCompRect.getY()
+          && grCompRect.getY() < grDeEssRect.getY(), "meter rows ascending (4)");
+    check(meterInRect.getWidth() == meterOutRect.getWidth() && meterOutRect.getWidth() == grCompRect.getWidth()
+          && grCompRect.getWidth() == grDeEssRect.getWidth(), "meter widths equal");
 
     std::printf("dumpLayout: FAIL=%d\n", fail);
 }
@@ -644,6 +670,7 @@ void MoonVocEditor::paintCanvas(juce::Graphics& g)
     drawCard(cardReverb,  Theme::cardReverb,  Theme::cardReverbDeep);
     drawCard(cardEq,      Theme::cardEq,      Theme::cardEqDeep);
     drawCard(cardComp,    Theme::cardComp,    Theme::cardCompDeep);
+    drawCard(cardDeEss,   Theme::cardDeEss,   Theme::cardDeEssDeep);
     drawCard(cardSat,     Theme::cardSat,     Theme::cardSatDeep);
     drawCard(cardEdge,    Theme::cardEdge,    Theme::cardEdgeDeep);
     drawCard(cardMonitor, Theme::cardMonitor, Theme::cardMonitorDeep);
@@ -661,6 +688,7 @@ void MoonVocEditor::paintCanvas(juce::Graphics& g)
     drawSectionBar(sectionGlobal,  Theme::cardGlobalDeep);
     drawSectionBar(sectionEq,      Theme::cardEqDeep);
     drawSectionBar(sectionComp,    Theme::cardCompDeep);
+    drawSectionBar(sectionDeEss,   Theme::cardDeEssDeep);
     drawSectionBar(sectionReverb,  Theme::cardReverbDeep);
     drawSectionBar(sectionSat,     Theme::cardSatDeep);
     drawSectionBar(sectionEdge,    Theme::cardEdgeDeep);
@@ -693,6 +721,8 @@ void MoonVocEditor::paintCanvas(juce::Graphics& g)
                currentZh ? S8("输出") : juce::String("OUT"), processorRef.getCompGainReduction());
     paintGrBar(g, grCompRect,  processorRef.getCompGainReduction(),
                currentZh ? S8("压缩") : juce::String("COMP"),  Theme::accent);
+    paintGrBar(g, grDeEssRect, processorRef.getDeEssGainReduction(),
+               currentZh ? S8("去齿音") : juce::String("DE-ESS"), Theme::accent2);
 
     // 页脚 LOGO（右下角，纯文本无辉光）
     auto logoBox = juce::Rectangle<int>(0, 0, kDesignW, kDesignH).removeFromBottom(20).withTrimmedRight(4);
@@ -751,6 +781,7 @@ void MoonVocEditor::layoutCanvas()
     };
     cardEq     = makeCard(320);
     cardComp   = makeCard(252);
+    cardDeEss  = makeCard(200);   // 链路位于压缩后
     cardSat    = makeCard(260);
     cardEdge   = makeCard(172);
     cardReverb = makeCard(180);
@@ -765,6 +796,7 @@ void MoonVocEditor::layoutCanvas()
     };
     bypassSlot(cardEq,     eqBypassBtn,     sectionEq);
     bypassSlot(cardComp,   compBypassBtn,   sectionComp);
+    bypassSlot(cardDeEss,  deEssBypassBtn,  sectionDeEss);
     bypassSlot(cardSat,    satBypassBtn,    sectionSat);
     bypassSlot(cardEdge,   edgeBypassBtn,   sectionEdge);
     bypassSlot(cardReverb, reverbBypassBtn, sectionReverb);
@@ -806,12 +838,25 @@ void MoonVocEditor::layoutCanvas()
     // cardComp：Style 下拉 + Compression hero + Makeup（Makeup 旋钮中心对齐 hero）
     {
         compModeBox.setBounds(cardComp.getX() + kPad, cardComp.getY() + 44, 130, 26);
-        auto heroSlot = juce::Rectangle<int>(cardComp.getX() + 16, cardComp.getY() + 84, 136, 156);
+        auto heroSlot = juce::Rectangle<int>(cardComp.getX() + 16, cardComp.getY() + 104, 136, 168);
         compAmountLabel.setBounds(heroSlot.removeFromTop(18));
         compAmountSlider.setBounds(heroSlot.withSizeKeepingCentre(kKnobHero, kKnobHero + kTbH));
-        auto mkSlot = juce::Rectangle<int>(cardComp.getX() + 156, cardComp.getY() + 112, 84, 100);
+        auto mkSlot = juce::Rectangle<int>(cardComp.getX() + 156, cardComp.getY() + 138, 84, 100);
         compMakeupLabel.setBounds(mkSlot.removeFromTop(18));
         compMakeupSlider.setBounds(mkSlot.withSizeKeepingCentre(76, kKnobStd + kTbH));
+    }
+
+    // cardDeEss：Amount + Focus 两旋钮并排（链路位于压缩后）
+    {
+        constexpr int kD = 80;
+        auto dslot = [&](juce::Slider& s, juce::Label& l, int sx)
+        {
+            auto slot = juce::Rectangle<int>(sx, cardDeEss.getY() + 104, kD, 18 + kD + kTbH);
+            l.setBounds(slot.removeFromTop(18));
+            s.setBounds(slot.withSizeKeepingCentre(kD, kD + kTbH));
+        };
+        dslot(dsAmountSlider, dsAmountLabel, cardDeEss.getX() + 20);
+        dslot(dsFocusSlider,  dsFocusLabel,  cardDeEss.getX() + 100);
     }
 
     // cardSat：A/B 两槽竖向堆叠（类型下拉 → 标签 → 旋钮）
@@ -843,19 +888,23 @@ void MoonVocEditor::layoutCanvas()
     {
         sectionMonitor.setBounds(cardMonitor.getX() + kPad, cardMonitor.getY() + 12, 120, 18);
         // 3 条横条：IN / OUT / COMP（标签左、数值右；宽度随字号缩放，大字版不裁切）
-        const int rowH = 16, gap = 10;
+        // 4 条横条：IN / OUT / COMP / DE-ESS（行高与间距比 3 条时收紧以适配卡片高度）
+        const int rowH = 15, gap = 9;
         const int leadW = (int) (78.0f * Theme::fontScale());
         const int tailW = (int) (86.0f * Theme::fontScale());
         const int barX = cardMonitor.getX() + leadW;
         const int barW = cardMonitor.getWidth() - leadW - tailW;
-        int y = cardMonitor.getY() + 38;
+        int y = cardMonitor.getY() + 34;
         meterInRect  = juce::Rectangle<int>(barX, y, barW, rowH); y += rowH + gap;
         meterOutRect = juce::Rectangle<int>(barX, y, barW, rowH); y += rowH + gap;
-        grCompRect   = juce::Rectangle<int>(barX, y, barW, rowH);
+        grCompRect   = juce::Rectangle<int>(barX, y, barW, rowH); y += rowH + gap;
+        grDeEssRect  = juce::Rectangle<int>(barX, y, barW, rowH);
     }
     {
         sectionOs.setBounds(cardOs.getX() + kPad, cardOs.getY() + 12, 110, 18);
-        oversamplingLabel.setBounds(juce::Rectangle<int>(cardOs.getX() + 44, cardOs.getY() + 56, 120, 22));
-        oversamplingBox.setBounds(juce::Rectangle<int>(cardOs.getX() + 168, cardOs.getY() + 53, 130, 28));
+        // 下拉垂直居中（原来偏上，卡片下半部留白）
+        const int osY = cardOs.getCentreY() - 14;
+        oversamplingLabel.setBounds(juce::Rectangle<int>(cardOs.getX() + 44, osY + 3, 120, 22));
+        oversamplingBox.setBounds(juce::Rectangle<int>(cardOs.getX() + 168, osY, 130, 28));
     }
 }
