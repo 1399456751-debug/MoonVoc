@@ -1,6 +1,6 @@
-# MoonVoc 交接文档（v0.8.0）
+# MoonVoc 交接文档（v0.9.0）
 
-> 给下一个会话/模型：读完这份文档即可无缝接手。最后更新：2026-09-27（v0.8.0：压缩三级重做 / DeBess 去齿音 / 瞬态增强 / 毛玻璃 UI）
+> 给下一个会话/模型：读完这份文档即可无缝接手。最后更新：2026-09-27（v0.9.0 测试版已打包发布：Win + mac 含 AU）
 
 ## 0. 一句话总结
 
@@ -83,6 +83,16 @@ moonvoc/
 - 布局验证：`UiSnapshot.exe` 打印控件坐标（Air 框中心=EQ 行中心、四旋钮等宽 y 一致、Edge 150 正方、Comp 130 正方、Drive 下拉等大）
 
 ## 6. 已知问题 / 待办
+
+**v0.9.0 测试版已发布打包（2026-09-27）**：
+- [x] 版本号 0.9.0（CMakeLists 7 处 + mac CI 产物名）
+- [x] **Windows 包**：`dist/MoonVoc_0.9.0_Win64.zip`（VST3 + Standalone + 中文说明）
+- [x] **mac 包**：`dist/MoonVoc_0.9.0_mac.zip`（**AU + VST3 + Standalone** + README_Mac，universal）——CI 产出，auval 通过（Logic/GarageBand 可用）
+- [x] 已 push GitHub main（含 CI workflow 修复）
+- [x] **本次两处 UI 微调**：Air 频点改分段按钮 Satin/Nimbus；Clarity 改单宽峰（消除毛糙）
+- [x] **CI 踩坑（重要）**：auval 报 error -50 的**真正根因**是 JUCE 的 `COPY_PLUGIN_AFTER_BUILD` 会把**未签名**构件自动装到 `~/Library/Audio/Plug-Ins/Components`，macOS 秒级扫描后缓存住它 → auval 拿到未签名版本。修复：验证前 `rm -rf` 自动安装的副本 + `killall -9 AudioComponentRegistrar` + 重试 90s（时序竞态，之前"成功"是运气）
+- [x] **Windows 打包踩坑**：`Compress-Archive` 和 .NET `ZipFile` 都不行（前者中文名 ANSI 编码、后者用反斜杠当路径分隔符）；`bsdtar` 路径对但中文名是 ANSI。**最终用 Python `zipfile`**（UTF-8 + flag），已验证 Windows 原生解压文件名正确
+- [ ] 等测试反馈
 
 **v0.8.0 已完成（2026-09-27）**：
 - [x] **压缩重做**：三级大师链（FET + 光电 + 并行）+ 侧链高通 120Hz（只作用于检测）+ 程序依赖释放；**保留并强化 crest 智能**（EMA 1s→300ms + 短时瞬态检测）；阈值改 pow(amount,0.4) 幂曲线
