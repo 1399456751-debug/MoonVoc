@@ -14,6 +14,25 @@ namespace
     {
         return jlimit(0.0f, 1.0f, (crestDb - 2.0f) / 8.0f);
     }
+
+    // RBJ 二阶高通，写进 Coefficients 的 5 元素 raw 数组 [b0,b1,b2,a1,a2]（a0 归一化省略）
+    void writeHighPass(float* c, double fs, float freq, float q)
+    {
+        const double w0 = 2.0 * juce::MathConstants<double>::pi
+                        * jlimit(10.0, fs * 0.45, (double) freq) / fs;
+        const double cs = std::cos(w0), sn = std::sin(w0);
+        const double alpha = sn / (2.0 * (double) q);
+        const double a0 = 1.0 + alpha;
+        c[0] = (float) (((1.0 + cs) * 0.5) / a0);
+        c[1] = (float) (-(1.0 + cs) / a0);
+        c[2] = c[0];
+        c[3] = (float) ((-2.0 * cs) / a0);
+        c[4] = (float) ((1.0 - alpha) / a0);
+    }
+
+    // 侧链高通截止：去掉低频触发（人声压缩不抽气的关键）。
+    // 只作用于检测路径，不改变音频本身；120Hz 以下的人声基频不再触发压缩。
+    constexpr float kScHpfFreq = 120.0f;
 }
 
 VoiceComp::VoiceComp(juce::AudioProcessorValueTreeState& apvts, std::atomic<double>& osSampleRate)
@@ -25,7 +44,7 @@ VoiceComp::VoiceComp(juce::AudioProcessorValueTreeState& apvts, std::atomic<doub
 {
 }
 
-void VoiceComp::Layer::prepare(double sr)
+void VoiceComp::Stage::prepare(double sr)
 {
     // 用平滑后的参数算系数（模式切换无 click）
     envAttack = timeToCoeff(attackMsS, sr);
@@ -34,7 +53,7 @@ void VoiceComp::Layer::prepare(double sr)
     gainRelease = timeToCoeff(releaseMsS, sr);
 }
 
-void VoiceComp::Layer::reset()
+void VoiceComp::Stage::reset()
 {
     env = 0.0;
     smoothDb = 0.0f;
@@ -44,74 +63,111 @@ void VoiceComp::prepare(const juce::dsp::ProcessSpec& spec)
 {
     sampleRate = (double) dspRate->load(); // OS 采样率（模块在超采样链内运行）
     mode = -1; // 强制下一块重算模式
+
+    // 侧链高通：系数预分配，每块按当前 dspRate 重写 raw 数组（倍率热切换不失效）
+    scCoeffs = juce::dsp::IIR::Coefficients<float>::makeHighPass(sampleRate, kScHpfFreq, 0.707f);
+    for (auto& f : scFilter)
+    {
+        f.prepare(spec);
+        f.coefficients = scCoeffs;
+        f.reset();
+    }
+
     updateSmartParams((int) spec.maximumBlockSize);
-    fastLayer.prepare(sampleRate);
-    smoothLayer.prepare(sampleRate);
+    fet.prepare(sampleRate);
+    opto.prepare(sampleRate);
+    para.prepare(sampleRate);
     reset();
 }
 
 void VoiceComp::reset()
 {
-    fastLayer.reset();
-    smoothLayer.reset();
-    peakEma = rmsEma = 0.0f;
+    fet.reset();
+    opto.reset();
+    para.reset();
+    peakEma = rmsEma = fastPeakEma = 0.0f;
+    crestDb = 3.0f;
+    transientIndex = 0.0f;
+    for (auto& f : scFilter)
+        f.reset();
     gainReduction.store(0.0f);
 }
 
-// 智能参数：由峰值因子驱动（块级更新，crest 本身 ~1s 平滑 → 无跳变）
+// 智能参数：crest 峰值因子 + 短时瞬态 驱动（块级更新 → 无跳变）
 void VoiceComp::updateSmartParams(int numSamples)
 {
     const int newMode = (int) modeParam->load();
     if (newMode != mode)
-    {
         mode = newMode;
-        modeRatioBoost = (mode == 1) ? 1.5f : 0.0f; // Rap 更狠
+
+    const float t  = crestNorm(crestDb);          // 0 = 平滑，1 = 瞬态丰富
+    const float ti = transientIndex;              // 短时瞬态（0~1）
+    const float forge = (mode == 1) ? 1.0f : 0.0f;
+
+    // Stage 1 FET：只抓峰值。attack 由 crest + 短时瞬态共同驱动，瞬态来了更快
+    fet.attackMs    = (3.0f + (0.3f - 3.0f) * t) * (1.0f - 0.6f * ti);
+    fet.releaseMs   = 120.0f + (60.0f - 120.0f) * t;
+    fet.ratio       = 4.0f + (8.0f - 4.0f) * t + forge * 1.5f;
+    fet.thresholdDb = -26.0f - 6.0f * forge;
+    fet.softKnee    = false;
+
+    // Stage 2 光电：做胶水（releaseMs 由 process 按压缩深度程序依赖地更新）
+    opto.attackMs    = 30.0f + (15.0f - 30.0f) * t;
+    opto.ratio       = 2.0f;
+    opto.thresholdDb = -34.0f - 4.0f * forge;
+    opto.softKnee    = true;
+
+    // 程序依赖释放：压得越深，释放越慢（用上一块的压缩深度，约一块延迟）
+    {
+        const float depthNorm = jlimit(0.0f, 1.0f, -opto.smoothDb / 6.0f);
+        opto.releaseMs = 120.0f + (1500.0f - 120.0f) * depthNorm;
     }
 
-    const float t = crestNorm(crestDb);
+    // Stage 3 并行：重压支链（New York 风），与主信号混合增密度
+    para.attackMs    = 0.5f;
+    para.releaseMs   = 100.0f;
+    para.ratio       = 8.0f;
+    para.thresholdDb = -40.0f;
+    para.softKnee    = false;
 
-    // 参数目标
-    fastLayer.attackMs = 3.0f + (0.15f - 3.0f) * t;
-    fastLayer.releaseMs = 180.0f + (70.0f - 180.0f) * t;
-    fastLayer.ratio = 3.5f + (6.0f - 3.5f) * t + modeRatioBoost;
-    fastLayer.softKnee = false;
-
-    smoothLayer.attackMs = 18.0f + (5.0f - 18.0f) * t;
-    smoothLayer.releaseMs = 400.0f + (150.0f - 400.0f) * t;
-    smoothLayer.ratio = 2.0f;
-    smoothLayer.softKnee = true;
-
-    // 平滑过渡（~30ms，模式切换/参数变化无 click）
-    constexpr float k = 0.25f; // 块级平滑（块 ~10ms → 收敛 ~4 块）
+    // 平滑过渡（块级 ~4 块收敛，模式切换/参数变化无 click）
+    constexpr float k = 0.25f;
     auto smoothTo = [k](float& s, float target) { s += k * (target - s); };
-    smoothTo(fastLayer.attackMsS,  fastLayer.attackMs);
-    smoothTo(fastLayer.releaseMsS, fastLayer.releaseMs);
-    smoothTo(fastLayer.ratioS,     fastLayer.ratio);
-    smoothTo(smoothLayer.attackMsS,  smoothLayer.attackMs);
-    smoothTo(smoothLayer.releaseMsS, smoothLayer.releaseMs);
-    smoothTo(smoothLayer.ratioS,     smoothLayer.ratio);
+    smoothTo(fet.attackMsS,  fet.attackMs);
+    smoothTo(fet.releaseMsS, fet.releaseMs);
+    smoothTo(fet.ratioS,     fet.ratio);
+    smoothTo(opto.attackMsS,  opto.attackMs);
+    smoothTo(opto.releaseMsS, opto.releaseMs);
+    smoothTo(opto.ratioS,     opto.ratio);
+    smoothTo(para.attackMsS,  para.attackMs);
+    smoothTo(para.releaseMsS, para.releaseMs);
+    smoothTo(para.ratioS,     para.ratio);
 
-    fastLayer.prepare(sampleRate);
-    smoothLayer.prepare(sampleRate);
+    fet.prepare(sampleRate);
+    opto.prepare(sampleRate);
+    para.prepare(sampleRate);
 
     // UI/测试显示
     crestDbDisplay.store(crestDb);
-    fastAttackMsDisplay.store(fastLayer.attackMs);
-    fastRatioDisplay.store(fastLayer.ratio);
+    fastAttackMsDisplay.store(fet.attackMs);
+    fastRatioDisplay.store(fet.ratio);
+    optoReleaseMsDisplay.store(opto.releaseMs);
 }
 
 void VoiceComp::process(const juce::dsp::ProcessContextReplacing<float>& context)
 {
     auto& outputBlock = context.getOutputBlock();
-
-
     if (outputBlock.getNumSamples() == 0)
         return;
 
+    sampleRate = (double) dspRate->load();
     const auto numChannels = outputBlock.getNumChannels();
     const auto numSamples = (int) outputBlock.getNumSamples();
 
-    // 智能特征检测：块级峰值/RMS → 慢速 EMA
+    // 侧链系数每块按当前 OS 率重写（OS 倍率热切换后系数会错位）
+    writeHighPass(scCoeffs->getRawCoefficients(), sampleRate, kScHpfFreq, 0.707f);
+
+    // 智能特征：长时 crest（300ms EMA）+ 短时瞬态（5ms EMA）
     float peak = 0.0f;
     double rms = 0.0;
     for (size_t ch = 0; ch < numChannels; ++ch)
@@ -123,80 +179,108 @@ void VoiceComp::process(const juce::dsp::ProcessContextReplacing<float>& context
             rms += (double) d[n] * d[n];
         }
     }
-    rms = std::sqrt(rms / (double) (numChannels * numSamples));
-    peakEma += crestAlpha * (peak - peakEma);
-    rmsEma += crestAlpha * ((float) rms - rmsEma);
-    crestDb = 20.0f * std::log10(peakEma / (rmsEma + 1.0e-8f));
-    crestDb = jlimit(1.0f, 14.0f, crestDb);
+    rms = std::sqrt(rms / (double) jmax(1, (int) (numChannels * (size_t) numSamples)));
+
+    const double blockDur = (double) numSamples / jmax(1.0, sampleRate);
+    const float slowAlpha = 1.0f - (float) std::exp(-blockDur / 0.30);
+    const float fastAlpha = 1.0f - (float) std::exp(-blockDur / 0.005);
+    peakEma     += slowAlpha * (peak - peakEma);
+    fastPeakEma += fastAlpha * (peak - fastPeakEma);
+    rmsEma      += slowAlpha * ((float) rms - rmsEma);
+    crestDb = jlimit(1.0f, 14.0f, 20.0f * std::log10(peakEma / (rmsEma + 1.0e-8f)));
+    transientIndex = jlimit(0.0f, 1.0f, (fastPeakEma - peakEma) / (peakEma + 1.0e-6f));
 
     updateSmartParams(numSamples);
 
-    // 旁通：压缩量与补偿增益同步平滑归零（阈值 0dB = 不压，makeup 0dB = 不补）
+    // 旁通：压缩量与补偿增益同步平滑归零
     {
         const float bypTarget = bypassParam->load() > 0.5f ? 0.0f : 1.0f;
-        const double blockDur = (double) numSamples / jmax(1.0, sampleRate);
         const float bypAlpha = 1.0f - (float) std::exp(-blockDur / 0.01);
         bypassMix += bypAlpha * (bypTarget - bypassMix);
     }
 
-    // 分层阈值：Fast 层浅（-30dB，只抓瞬态峰值）；Smooth 层深（-40dB，管整体节目电平）
     const float amount = jlimit(0.0f, 100.0f, amountParam->load()) / 100.0f * bypassMix;
-    const float fastThresh = -30.0f * amount;
-    const float smoothThresh = -40.0f * amount;
-    const float makeupGain = juce::Decibels::decibelsToGain(jlimit(0.0f, 12.0f, makeupParam->load()) * bypassMix);
+    const float makeupGain = juce::Decibels::decibelsToGain(
+        jlimit(0.0f, 12.0f, makeupParam->load()) * bypassMix);
+
+    // 阈值随 amount 展开（0% = 不压）。用幂曲线而非线性：
+    // 线性缩放下 amount<1 时阈值快速变浅，旋钮拧一半几乎没有压缩，手感很差。
+    const float amountCurve = std::pow(amount, 0.4f);
+    const float fetThresh  = fet.thresholdDb  * amountCurve;
+    const float optoThresh = opto.thresholdDb * amountCurve;
+    const float paraThresh = para.thresholdDb * amountCurve;
+    const float paraMix    = ((mode == 1) ? 0.35f : 0.15f) * amount;
 
     float* data[2] { nullptr, nullptr };
     const size_t chs = (size_t) jmin((int) numChannels, 2);
     for (size_t ch = 0; ch < chs; ++ch)
         data[ch] = outputBlock.getChannelPointer(ch);
 
-    Layer* layers[2] { &fastLayer, &smoothLayer };
+    float grMax = 0.0f; // 三级 GR 之和的最负值
+    constexpr float kneeOpto = 8.0f;
 
-    for (size_t n = 0; n < (size_t) numSamples; ++n)
+    for (int n = 0; n < numSamples; ++n)
     {
-        // 共享检测：所有通道峰值（stereo linked）
-        float peak = 0.0f;
+        // 侧链检测信号（高通后，仅用于检测，不改音频路径）；stereo linked
+        float scPeak = 0.0f;
         for (size_t ch = 0; ch < chs; ++ch)
-            peak = jmax(peak, std::abs(data[ch][n]));
+            scPeak = jmax(scPeak, std::abs(scFilter[jmin(ch, (size_t) 1)].processSample(data[ch][n])));
 
-        // 两层串联（Fast → Smooth），每层独立包络/增益
-        for (Layer* layer : layers)
+        // Stage 1 FET：抓字头过冲
         {
-            // 包络跟随（上升 attack，下降 release）
-            const float k = peak > layer->env ? layer->envAttack : layer->envRelease;
-            layer->env += k * ((double) peak - layer->env);
-
-            const float envDb = 20.0f * std::log10((float) layer->env + 1.0e-6f);
-            const float over = envDb - (layer == &fastLayer ? fastThresh : smoothThresh);
-
-            // 增益曲线（Smooth 层软拐点 knee=6dB）
-            float targetDb;
+            const float k = scPeak > fet.env ? fet.envAttack : fet.envRelease;
+            fet.env += k * ((double) scPeak - fet.env);
+            const float envDb = 20.0f * std::log10((float) fet.env + 1.0e-6f);
+            const float over = envDb - fetThresh;
+            float targetDb = 0.0f;
             if (over > 0.0f)
-            {
-                float effectiveOver = over;
-                if (layer->softKnee)
-                {
-                    constexpr float knee = 6.0f;
-                    effectiveOver = over > knee ? over - knee * 0.5f
-                                                : over * over / (2.0f * knee);
-                }
-                targetDb = -effectiveOver * (1.0f - 1.0f / layer->ratioS);
-            }
-            else
-            {
-                targetDb = 0.0f;
-            }
-
-            // 增益平滑（压下去快，恢复慢）
-            const float gk = targetDb < layer->smoothDb ? layer->gainAttack : layer->gainRelease;
-            layer->smoothDb += gk * (targetDb - layer->smoothDb);
+                targetDb = -over * (1.0f - 1.0f / jmax(1.0f, fet.ratioS));
+            const float gk = targetDb < fet.smoothDb ? fet.gainAttack : fet.gainRelease;
+            fet.smoothDb += gk * (targetDb - fet.smoothDb);
         }
 
-        // 应用两层增益 + Makeup
-        const float g = std::pow(10.0f, (fastLayer.smoothDb + smoothLayer.smoothDb) * 0.05f) * makeupGain;
+        // Stage 2 光电：软拐点 + 程序依赖释放，做胶水
+        {
+            const float k = scPeak > opto.env ? opto.envAttack : opto.envRelease;
+            opto.env += k * ((double) scPeak - opto.env);
+            const float envDb = 20.0f * std::log10((float) opto.env + 1.0e-6f);
+            const float over = envDb - optoThresh;
+            float targetDb = 0.0f;
+            if (over > 0.0f)
+            {
+                const float eff = over > kneeOpto ? over - kneeOpto * 0.5f
+                                                  : over * over / (2.0f * kneeOpto);
+                targetDb = -eff * (1.0f - 1.0f / jmax(1.0f, opto.ratioS));
+            }
+            const float gk = targetDb < opto.smoothDb ? opto.gainAttack : opto.gainRelease;
+            opto.smoothDb += gk * (targetDb - opto.smoothDb);
+        }
+
+        const float mainGain = std::pow(10.0f, (fet.smoothDb + opto.smoothDb) * 0.05f);
+
+        // Stage 3 并行：重压支链（从同一输入取信号）
+        {
+            const float k = scPeak > para.env ? para.envAttack : para.envRelease;
+            para.env += k * ((double) scPeak - para.env);
+            const float envDb = 20.0f * std::log10((float) para.env + 1.0e-6f);
+            const float over = envDb - paraThresh;
+            float targetDb = 0.0f;
+            if (over > 0.0f)
+                targetDb = -over * (1.0f - 1.0f / jmax(1.0f, para.ratioS));
+            const float gk = targetDb < para.smoothDb ? para.gainAttack : para.gainRelease;
+            para.smoothDb += gk * (targetDb - para.smoothDb);
+        }
+        const float paraGain = std::pow(10.0f, para.smoothDb * 0.05f);
+
+        grMax = jmin(grMax, fet.smoothDb + opto.smoothDb);
+
+        // 主路径 + 并行支链混合（amount=0 时 paraMix=0、两级增益均为 1 → 严格直通）
         for (size_t ch = 0; ch < chs; ++ch)
-            data[ch][n] *= g;
+        {
+            const float in = data[ch][n];
+            data[ch][n] = (in * mainGain * (1.0f - paraMix) + in * paraGain * paraMix) * makeupGain;
+        }
     }
 
-    gainReduction.store(fastLayer.smoothDb + smoothLayer.smoothDb);
+    gainReduction.store(grMax);
 }

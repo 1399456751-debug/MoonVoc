@@ -273,6 +273,82 @@ int main()
                   && pulseRatio > sineRatio + 0.5f ? "OK" : "BAD");
     }
 
+    // v0.8.0 压缩三级：GR 总量 + 侧链高通 + 程序依赖释放
+    {
+        auto resetFor = [&](float amount, float mode)
+        {
+            processor.prepareToPlay(48000.0, 512);
+            const auto& a = processor.apvts;
+            for (auto id : { "eqLowBoost", "eqDeboxCut", "eqClarityBoost", "eqAirBoost", "eqAirFreq",
+                             "compMakeup", "reverbAmount", "reverbMode",
+                             "satTypeA", "satAmountA", "satTypeB", "satAmountB",
+                             "edgeAmount", "dsAmount", "dsFocus",
+                             "eqBypass", "compBypass", "satBypass", "edgeBypass",
+                             "reverbBypass", "deEssBypass",
+                             "inputGain", "outputGain", "headroom", "oversampling" })
+                *a.getRawParameterValue(id) = 0.0f;
+            *a.getRawParameterValue("compMode")   = mode;
+            *a.getRawParameterValue("compAmount") = amount;
+        };
+
+        auto runGr = [&](float freq, float amp, int blocks) -> float
+        {
+            juce::AudioBuffer<float> buf(2, 512);
+            juce::MidiBuffer midi;
+            float grSum = 0.0f; int cnt = 0;
+            for (int b = 0; b < blocks; ++b)
+            {
+                for (int c = 0; c < 2; ++c)
+                    for (int n = 0; n < 512; ++n)
+                        buf.setSample(c, n, amp * std::sin(2.0f * 3.14159f * freq * (float) (b * 512 + n) / 48000.0f));
+                processor.processBlock(buf, midi);
+                if (b >= blocks / 2) { grSum += processor.getCompGainReduction(); ++cnt; }
+            }
+            return cnt > 0 ? grSum / (float) cnt : 0.0f;
+        };
+
+        // 1) 100% 压缩有实质 GR
+        resetFor(100.0f, 0.0f);
+        const float grFull = runGr(440.0f, 0.3f, 300);
+        TRACE("comp v080: full GR=%.1f dB %s\n", grFull, grFull < -4.0f ? "OK" : "BAD");
+        if (! (grFull < -4.0f)) return 1;
+
+        // 2) 侧链高通生效：同电平下 80Hz 的 GR 应明显小于 1kHz（低频不触发 → 不抽气）
+        resetFor(100.0f, 0.0f);
+        const float grLow = runGr(80.0f, 0.3f, 300);
+        resetFor(100.0f, 0.0f);
+        const float grMid = runGr(1000.0f, 0.3f, 300);
+        const bool hpfOk = std::abs(grLow) < std::abs(grMid) * 0.6f;
+        TRACE("comp v080: scHPF 80Hz GR=%.1f vs 1kHz GR=%.1f %s\n",
+              grLow, grMid, hpfOk ? "OK" : "BAD");
+        if (! hpfOk) return 1;
+
+        // 3) 程序依赖释放：压得久（长持续音）释放更慢 → 停声后残余 GR 更大
+        const auto releaseAfterStop = [&](int toneBlocks) -> float
+        {
+            resetFor(100.0f, 0.0f);
+            juce::AudioBuffer<float> buf(2, 512);
+            juce::MidiBuffer midi;
+            for (int b = 0; b < toneBlocks; ++b)
+            {
+                for (int c = 0; c < 2; ++c)
+                    for (int n = 0; n < 512; ++n)
+                        buf.setSample(c, n, 0.4f * std::sin(2.0f * 3.14159f * 440.0f * (float) (b * 512 + n) / 48000.0f));
+                processor.processBlock(buf, midi);
+            }
+            buf.clear();
+            for (int b = 0; b < 4; ++b) processor.processBlock(buf, midi);
+            return processor.getCompGainReduction();
+        };
+        const float grShort = releaseAfterStop(10);
+        const float grLong  = releaseAfterStop(400);
+        const bool pdOk = std::abs(grLong) > std::abs(grShort) + 0.5f;
+        TRACE("comp v080: progRelease short=%.2f dB long=%.2f dB %s\n",
+              grShort, grLong, pdOk ? "OK" : "BAD");
+        if (! pdOk) return 1;
+        TRACE("comp v080: OK\n");
+    }
+
     // 混响检查：wet>0 时单脉冲后应有尾音；wet=0 时无尾音
     {
         processor.prepareToPlay(48000.0, 512); // 块大小必须与 processBlock 一致（超采样器按此分配）
