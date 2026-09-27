@@ -94,7 +94,7 @@ private:
     juce::Label boostLabel, deboxLabel, clarityLabel, airLabel;
     juce::Label deboxFreqLabel, clarityFreqLabel;   // 智能锁频显示
     juce::Label thickFreqLabel;
-    juce::ComboBox airFreqBox;
+    juce::TextButton airSatinBtn, airNimbusBtn;     // Air 频点分段按钮（Satin 16k / Nimbus 22k）
 
     // 压缩
     juce::ComboBox compModeBox;
@@ -134,7 +134,8 @@ private:
     std::unique_ptr<SliderAttachment> compAmountAtt, compMakeupAtt, reverbAmountAtt;
     std::unique_ptr<SliderAttachment> dsAmountAtt, dsFocusAtt;
     std::unique_ptr<SliderAttachment> satAmountAAtt, satAmountBAtt, edgeAtt;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> oversamplingAtt, airFreqAtt, compModeAtt, reverbModeAtt, satTypeAAtt, satTypeBAtt;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> oversamplingAtt, compModeAtt, reverbModeAtt, satTypeAAtt, satTypeBAtt;
+    std::unique_ptr<juce::ParameterAttachment> airFreqAtt; // Air 频点（choice 参数 → 两个分段按钮）
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> eqBypassAtt, compBypassAtt, deEssBypassAtt, satBypassAtt, edgeBypassAtt, reverbBypassAtt;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> langAtt, scaleAtt;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> largeFontAtt;

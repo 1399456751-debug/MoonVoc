@@ -10,7 +10,7 @@ namespace Strings
     {
         kGlobal, kEq, kComp, kDeEss, kReverb, kSat, kEdge, kMonitor, kEngine, kSettings,
         kInput, kHeadroom, kOutput,
-        kThick, kDebox, kClarity, kAir, kAirFreq16, kAirFreq22,
+        kThick, kDebox, kClarity, kAir, kAirSatin, kAirNimbus,
         kCompression, kMakeup, kStylePop, kStyleRap,
         kDeEssAmount, kDeEssFocus,
         kReverbAmt, kModePop, kModeRap,
@@ -38,8 +38,9 @@ namespace Strings
             case kDebox:       return zh ? S8("去盒子音") : S8("De-Box");
             case kClarity:     return zh ? S8("清晰度")   : S8("Clarity");
             case kAir:         return zh ? S8("空气感")   : S8("Air");
-            case kAirFreq16:   return S8("16 kHz");
-            case kAirFreq22:   return S8("22 kHz");
+            // Air 频点：Satin = 16kHz（搁架起点低、过渡缓，厚实丝滑）；Nimbus = 22kHz（更靠上、通透飘逸）
+            case kAirSatin:    return zh ? S8("缎面") : S8("Satin");
+            case kAirNimbus:   return zh ? S8("雨云") : S8("Nimbus");
             case kCompression: return zh ? S8("压缩量")   : S8("Compression");
             case kMakeup:      return zh ? S8("补偿")     : S8("Makeup");
             case kStylePop:    return zh ? S8("柔光")     : S8("Glow");

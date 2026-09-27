@@ -60,7 +60,15 @@ MoonVocEditor::MoonVocEditor(MoonVocProcessor& p)
         l->setFont(Theme::fontLabel(12.0f));
         canvas.addAndMakeVisible(*l);
     }
-    setupCombo(airFreqBox, { "16 kHz", "22 kHz" });
+    // Air 频点：两个分段小按钮（Satin 16k / Nimbus 22k）。状态完全由参数驱动，
+    // 不自管 toggle（避免视觉状态与参数不一致）
+    for (auto* b : { &airSatinBtn, &airNimbusBtn })
+    {
+        b->setClickingTogglesState(false);
+        b->setRadioGroupId(0x41);
+        b->getProperties().set("moonvocArcColor", (juce::int64) Theme::cardEqDeep.getARGB());
+        canvas.addAndMakeVisible(*b);
+    }
 
     // 压缩
     setupCombo(compModeBox, { "Pop", "Rap" });
@@ -119,7 +127,19 @@ MoonVocEditor::MoonVocEditor(MoonVocProcessor& p)
     deboxAtt   = std::make_unique<SliderAttachment>(processorRef.apvts, "eqDeboxCut",     deboxSlider);
     clarityAtt = std::make_unique<SliderAttachment>(processorRef.apvts, "eqClarityBoost", claritySlider);
     airAtt     = std::make_unique<SliderAttachment>(processorRef.apvts, "eqAirBoost",     airSlider);
-    airFreqAtt = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(processorRef.apvts, "eqAirFreq", airFreqBox);
+    // Air 频点：choice 参数（0=Satin 16k / 1=Nimbus 22k）驱动两个分段按钮
+    airFreqAtt = std::make_unique<juce::ParameterAttachment>(
+        *processorRef.apvts.getParameter(ParamID::eqAirFreq),
+        [this](float v)
+        {
+            const bool nimbus = v >= 0.5f;
+            airSatinBtn.setToggleState(! nimbus, juce::dontSendNotification);
+            airNimbusBtn.setToggleState(nimbus, juce::dontSendNotification);
+        });
+    airFreqAtt->sendInitialUpdate();
+
+    airSatinBtn.onClick  = [this] { airFreqAtt->setValueAsCompleteGesture(0.0f); };
+    airNimbusBtn.onClick = [this] { airFreqAtt->setValueAsCompleteGesture(1.0f); };
 
     // 压缩
     compModeAtt    = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(processorRef.apvts, "compMode", compModeBox);
@@ -247,6 +267,8 @@ void MoonVocEditor::applyLanguage()
                                           : juce::StringArray{ "Off", "FET", "Tube", "Tape", "Optical", "Germanium" };
     setItems(satTypeABox, satTypes);
     setItems(satTypeBBox, satTypes);
+    airSatinBtn.setButtonText(Strings::get(Strings::kAirSatin, zh));
+    airNimbusBtn.setButtonText(Strings::get(Strings::kAirNimbus, zh));
 
     const juce::String byp = Strings::get(Strings::kBypass, zh);
     for (auto* b : { &eqBypassBtn, &compBypassBtn, &deEssBypassBtn, &satBypassBtn, &edgeBypassBtn, &reverbBypassBtn })
@@ -466,7 +488,8 @@ void MoonVocEditor::dumpLayout() const
     owned(cardEq, "deboxSlider", deboxSlider.getBounds());
     owned(cardEq, "claritySlider", claritySlider.getBounds());
     owned(cardEq, "airSlider", airSlider.getBounds());
-    owned(cardEq, "airFreqBox", airFreqBox.getBounds());
+    owned(cardEq, "airSatinBtn", airSatinBtn.getBounds());
+    owned(cardEq, "airNimbusBtn", airNimbusBtn.getBounds());
     owned(cardComp, "compModeBox", compModeBox.getBounds());
     owned(cardComp, "compAmountSlider", compAmountSlider.getBounds());
     owned(cardComp, "compMakeupSlider", compMakeupSlider.getBounds());
@@ -502,8 +525,11 @@ void MoonVocEditor::dumpLayout() const
     check(claritySlider.getY() > boostSlider.getY(), "EQ row2 below row1");
     check(boostSlider.getBounds().getCentreX() == claritySlider.getBounds().getCentreX(), "EQ col1 aligned");
     check(deboxSlider.getBounds().getCentreX() == airSlider.getBounds().getCentreX(), "EQ col2 aligned");
-    check(std::abs(airFreqBox.getBounds().getCentreX() - airSlider.getBounds().getCentreX()) <= 1,
-          "airFreq centred under air");
+    check(std::abs((airSatinBtn.getBounds().getX() + airNimbusBtn.getBounds().getRight()) / 2
+                   - airSlider.getBounds().getCentreX()) <= 1,
+          "air freq buttons centred under air");
+    check(airSatinBtn.getBounds().getWidth() == airNimbusBtn.getBounds().getWidth(),
+          "air freq buttons equal width");
     check(compAmountSlider.getBounds().getWidth() == kKnobHero
           && compAmountSlider.getBounds().getHeight() == kKnobHero + kTbH, "comp hero size");
     check(edgeSlider.getBounds().getWidth() == kKnobHero
@@ -867,10 +893,13 @@ void MoonVocEditor::layoutCanvas()
         eslot(deboxSlider,   deboxLabel,   &deboxFreqLabel,   col2X, row1Y);
         eslot(claritySlider, clarityLabel, &clarityFreqLabel, col1X, row2Y);
         eslot(airSlider,     airLabel,     nullptr,           col2X, row2Y);
-        // Air 频点选择：Air 旋钮下方底部行（宽度随字号缩放）
-        const int airW = (int) (84.0f * Theme::fontScale());
-        airFreqBox.setBounds(juce::Rectangle<int>(airSlider.getBounds().getCentreX() - airW / 2,
-                                                  cardEq.getY() + 282, airW, 22));
+        // Air 频点：两个分段小按钮并排，整体居中于 Air 旋钮下方（宽度随字号缩放）
+        const int aBtnW = (int) (44.0f * Theme::fontScale());
+        constexpr int aGap = 4;
+        const int aTotal = aBtnW * 2 + aGap;
+        const int aX = airSlider.getBounds().getCentreX() - aTotal / 2;
+        airSatinBtn.setBounds(aX, cardEq.getY() + 282, aBtnW, 22);
+        airNimbusBtn.setBounds(aX + aBtnW + aGap, cardEq.getY() + 282, aBtnW, 22);
     }
 
     // cardComp：Style 下拉 + Compression hero + Makeup（Makeup 旋钮中心对齐 hero）

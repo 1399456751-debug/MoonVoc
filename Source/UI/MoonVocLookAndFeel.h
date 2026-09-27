@@ -134,6 +134,12 @@ public:
 
     void drawLabel(juce::Graphics&, juce::Label&) override;
 
+    // 分段小按钮（Air 频点选择用）：只在按钮带 moonvocArcColor 属性时自绘，其余走基类
+    void drawButtonBackground(juce::Graphics&, juce::Button&, const juce::Colour& backgroundColour,
+                              bool shouldDrawButtonAsHighlighted, bool shouldDrawButtonAsDown) override;
+    void drawButtonText(juce::Graphics&, juce::TextButton&,
+                        bool shouldDrawButtonAsHighlighted, bool shouldDrawButtonAsDown) override;
+
     void drawPopupMenuItem(juce::Graphics&, const juce::Rectangle<int>& area, bool isSeparator,
                            bool isActive, bool isHighlighted, bool isTicked, bool hasSubMenu,
                            const juce::String& text, const juce::String& shortcutKeyText,

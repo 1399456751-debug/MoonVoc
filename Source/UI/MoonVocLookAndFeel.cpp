@@ -159,6 +159,58 @@ void MoonVocLookAndFeel::drawLabel(juce::Graphics& g, juce::Label& label)
     g.drawText(label.getText(), label.getLocalBounds().toFloat(), label.getJustificationType());
 }
 
+// 分段小按钮：选中 = 模块色实心胶囊 + 白字；未选中 = 浅底 + 描边 + 深字
+void MoonVocLookAndFeel::drawButtonBackground(juce::Graphics& g, juce::Button& b,
+                                              const juce::Colour&, bool highlighted, bool down)
+{
+    if (b.getProperties()["moonvocArcColor"].isVoid())
+    {
+        LookAndFeel_V4::drawButtonBackground(g, b, b.findColour(juce::TextButton::buttonColourId),
+                                             highlighted, down);
+        return;
+    }
+
+    auto col = juce::Colour((juce::uint32) (juce::int64) b.getProperties()["moonvocArcColor"]);
+    const auto r = b.getLocalBounds().toFloat().reduced(0.5f);
+    const bool on = b.getToggleState();
+    constexpr float corner = 7.0f;
+
+    if (on)
+    {
+        g.setColour(col);
+        g.fillRoundedRectangle(r, corner);
+    }
+    else
+    {
+        g.setColour(Theme::panel);
+        g.fillRoundedRectangle(r, corner);
+        g.setColour(Theme::panelEdge);
+        g.drawRoundedRectangle(r, corner, 1.0f);
+        if (highlighted)
+        {
+            g.setColour(col.withAlpha(0.10f));
+            g.fillRoundedRectangle(r, corner);
+        }
+    }
+    if (down)
+    {
+        g.setColour(juce::Colours::black.withAlpha(0.06f));
+        g.fillRoundedRectangle(r, corner);
+    }
+}
+
+void MoonVocLookAndFeel::drawButtonText(juce::Graphics& g, juce::TextButton& b, bool, bool)
+{
+    if (b.getProperties()["moonvocArcColor"].isVoid())
+    {
+        LookAndFeel_V4::drawButtonText(g, b, false, false);
+        return;
+    }
+    g.setFont(Theme::fontLabel(12.0f));
+    g.setColour(b.getToggleState() ? juce::Colours::white : Theme::dimColour());
+    g.drawText(b.getButtonText(), b.getLocalBounds(), juce::Justification::centred);
+}
+
 // 开关：iOS pill（轨道 + 白滑块）
 void MoonVocLookAndFeel::drawToggleButton(juce::Graphics& g, juce::ToggleButton& b,
                                           bool, bool down)
