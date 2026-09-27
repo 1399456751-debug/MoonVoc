@@ -16,6 +16,7 @@ MoonVocProcessor::MoonVocProcessor()
           .withOutput("Output", juce::AudioChannelSet::stereo(), true)),
       apvts(*this, nullptr, "MoonVocParams", createParameterLayout()),
       eq(apvts, dspSampleRate), comp(apvts, dspSampleRate),
+      deEss(apvts, dspSampleRate),
       sat(apvts, dspSampleRate), edge(apvts, dspSampleRate),
       reverb(apvts, dspSampleRate),
       oversamplingParam(apvts.getRawParameterValue(ParamID::oversampling))
@@ -67,12 +68,17 @@ AP::ParameterLayout MoonVocProcessor::createParameterLayout()
     p.push_back(std::make_unique<Choice>(ParamID::reverbMode, S8("混响模式 Reverb Mode"),
         juce::StringArray{ S8("薄纱 Veil"), S8("深渊 Abyss") }, 0));
 
+    // 去齿音（Airwindows DeBess 移植；链路位于压缩之后）
+    p.push_back(std::make_unique<Param>(ParamID::dsAmount, S8("去齿音量 De-Ess"), pct, 0.0f));
+    p.push_back(std::make_unique<Param>(ParamID::dsFocus,  S8("齿音频段 De-Ess Focus"), pct, 50.0f));
+
     // 旁通（默认关 = 不旁通）
     p.push_back(std::make_unique<Bool>(ParamID::eqBypass,     S8("EQ旁通 EQ Bypass"), false));
     p.push_back(std::make_unique<Bool>(ParamID::compBypass,   S8("压缩旁通 Comp Bypass"), false));
     p.push_back(std::make_unique<Bool>(ParamID::satBypass,    S8("染色旁通 Sat Bypass"), false));
     p.push_back(std::make_unique<Bool>(ParamID::edgeBypass,   S8("瞬态旁通 Edge Bypass"), false));
     p.push_back(std::make_unique<Bool>(ParamID::reverbBypass, S8("混响旁通 Reverb Bypass"), false));
+    p.push_back(std::make_unique<Bool>(ParamID::deEssBypass,  S8("去齿音旁通 De-Ess Bypass"), false));
 
     // UI 设置
     p.push_back(std::make_unique<Choice>(ParamID::uiLanguage, S8("语言 Language"),
@@ -124,6 +130,7 @@ void MoonVocProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
     juce::dsp::ProcessSpec osSpec{ sampleRate, (juce::uint32) samplesPerBlock, numChannels };
     eq.prepare(osSpec);
     comp.prepare(osSpec);
+    deEss.prepare(osSpec);
     sat.prepare(osSpec);
     edge.prepare(osSpec);
 
@@ -197,12 +204,14 @@ void MoonVocProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::Midi
         auto osContext = juce::dsp::ProcessContextReplacing<float>(osBlock);
         eq.process(osContext);
         comp.process(osContext);
+        deEss.process(osContext);
         sat.process(osContext);
         edge.process(osContext);
         os->processSamplesDown(block);
     }
 
     // 混响（链路最后，宿主采样率）
+
     reverb.process(juce::dsp::ProcessContextReplacing<float>(block));
 
     outputGain.process(juce::dsp::ProcessContextReplacing<float>(block));

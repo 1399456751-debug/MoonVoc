@@ -3,11 +3,12 @@
 #include <JuceHeader.h>
 #include "dsp/VoiceEq.h"
 #include "dsp/VoiceComp.h"
+#include "dsp/VoiceDeEsser.h"
 #include "dsp/VoiceSat.h"
 #include "dsp/VoiceEdge.h"
 #include "dsp/VoiceReverb.h"
 
-// 信号链：EQ → 压缩 → 染色 → 瞬态 → 混响（最后）
+// 信号链：EQ → 压缩 → 去齿音 → 染色 → 瞬态 → 混响（最后）
 class MoonVocProcessor : public juce::AudioProcessor
 {
 public:
@@ -42,6 +43,9 @@ public:
     // 压缩 GR 电平表（UI/测试读取）
     float getCompGainReduction() const { return comp.gainReduction.load(); }
 
+    // 去齿音 GR 电平表（UI/测试读取）
+    float getDeEssGainReduction() const { return deEss.gainReduction.load(); }
+
     // 输入/输出电平表（dBFS，VU 平滑；UI/测试读取）
     std::atomic<float> inputLevelDb { -60.0f };
     std::atomic<float> outputLevelDb { -60.0f };
@@ -70,6 +74,7 @@ private:
 
     VoiceEq eq;
     VoiceComp comp;
+    VoiceDeEsser deEss;
     VoiceSat sat;
     VoiceEdge edge;
     VoiceReverb reverb;

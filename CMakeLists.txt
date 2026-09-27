@@ -44,6 +44,7 @@ target_sources(MoonVoc PRIVATE
     Source/dsp/VoiceReverb.cpp
     Source/dsp/VoiceEq.cpp
     Source/dsp/VoiceComp.cpp
+    Source/dsp/VoiceDeEsser.cpp
     Source/dsp/VoiceSat.cpp
     Source/dsp/VoiceEdge.cpp
 )
@@ -74,6 +75,7 @@ add_executable(MoonVocHeadlessTest
     Source/dsp/VoiceReverb.cpp
     Source/dsp/VoiceEq.cpp
     Source/dsp/VoiceComp.cpp
+    Source/dsp/VoiceDeEsser.cpp
     Source/dsp/VoiceSat.cpp
     Source/dsp/VoiceEdge.cpp
 )
@@ -108,6 +110,7 @@ add_executable(MoonVocRender
     Source/dsp/VoiceReverb.cpp
     Source/dsp/VoiceEq.cpp
     Source/dsp/VoiceComp.cpp
+    Source/dsp/VoiceDeEsser.cpp
     Source/dsp/VoiceSat.cpp
     Source/dsp/VoiceEdge.cpp
 )
@@ -142,6 +145,7 @@ add_executable(MoonVocUiSnapshot
     Source/dsp/VoiceReverb.cpp
     Source/dsp/VoiceEq.cpp
     Source/dsp/VoiceComp.cpp
+    Source/dsp/VoiceDeEsser.cpp
     Source/dsp/VoiceSat.cpp
     Source/dsp/VoiceEdge.cpp
 )

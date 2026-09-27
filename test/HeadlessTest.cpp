@@ -992,6 +992,54 @@ int main()
         TRACE("v080 params check: OK\n");
     }
 
+    // v0.8.0 DeBess 去齿音：齿音削减达标 + 1kHz 正弦零触发（无染色）+ 关闭零削减
+    {
+        auto measureGr = [&](float freq, float amount) -> float
+        {
+            processor.prepareToPlay(48000.0, 512);
+            const auto& a = processor.apvts;
+            for (auto id : { "eqLowBoost", "eqDeboxCut", "eqClarityBoost", "eqAirBoost", "eqAirFreq",
+                             "compAmount", "compMakeup", "compMode",
+                             "reverbAmount", "reverbMode",
+                             "satTypeA", "satAmountA", "satTypeB", "satAmountB",
+                             "edgeAmount", "dsFocus",
+                             "eqBypass", "compBypass", "satBypass", "edgeBypass",
+                             "reverbBypass", "deEssBypass",
+                             "inputGain", "outputGain", "headroom", "oversampling" })
+                *a.getRawParameterValue(id) = 0.0f;
+            *a.getRawParameterValue("dsFocus")  = 40.0f; // 偏高频刺
+            *a.getRawParameterValue("dsAmount") = amount;
+
+            juce::AudioBuffer<float> buf(2, 512);
+            juce::MidiBuffer midi;
+            float grSum = 0.0f; int grCount = 0;
+            for (int b = 0; b < 300; ++b)
+            {
+                for (int c = 0; c < 2; ++c)
+                    for (int n = 0; n < 512; ++n)
+                    {
+                        const float t = (float) (b * 512 + n) / 48000.0f;
+                        // 抖动的高频"齿音"：载波 + 50Hz 包络调制
+                        const float env = 0.5f + 0.5f * std::sin(2.0f * 3.14159f * 50.0f * t);
+                        buf.setSample(c, n, 0.4f * env * std::sin(2.0f * 3.14159f * freq * t));
+                    }
+                processor.processBlock(buf, midi);
+                if (b >= 200) { grSum += processor.getDeEssGainReduction(); ++grCount; }
+            }
+            return grCount > 0 ? grSum / (float) grCount : 0.0f;
+        };
+
+        const float grSib  = measureGr(7000.0f, 100.0f);
+        const float grTone = measureGr(1000.0f, 100.0f);
+        const float grOff  = measureGr(7000.0f, 0.0f);
+        TRACE("deess v080: 7kHz gr=%.1f dB  1kHz gr=%.1f dB  off gr=%.1f dB %s\n",
+              grSib, grTone, grOff,
+              (grSib < -3.0f && grTone > -1.0f && std::abs(grOff) < 0.01f) ? "OK" : "BAD");
+        if (! (grSib < -3.0f && grTone > -1.0f && std::abs(grOff) < 0.01f))
+            return 1;
+        TRACE("deess v080: OK\n");
+    }
+
     juce::Logger::writeToLog("Headless test passed (all blocks finite)");
     return 0;
 }

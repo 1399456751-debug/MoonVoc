@@ -37,7 +37,12 @@ namespace ParamID
 
     // 混响（双模式，链路最后）
     inline const juce::String reverbAmount { "reverbAmount" }; // wet 0~100%
-    inline const juce::String reverbMode   { "reverbMode" };   // Pop / Rap
+    inline const juce::String reverbMode   { "reverbMode" };   // Veil / Abyss
+
+    // 去齿音（Airwindows DeBess 移植；链路位于压缩之后）
+    inline const juce::String dsAmount    { "dsAmount" };     // 0~100% 强度
+    inline const juce::String dsFocus     { "dsFocus" };      // 0~100% 低频刺 ↔ 高频刺
+    inline const juce::String deEssBypass { "deEssBypass" };
 
     // 旁通（默认 false = 不旁通）
     inline const juce::String eqBypass     { "eqBypass" };
