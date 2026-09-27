@@ -3,8 +3,12 @@
 
 namespace
 {
-    // 瞬态最大增益变化（amount ±100 → 起音增益 0.2x ~ 1.8x）
-    constexpr float kMaxBoost = 0.8f;
+    // 最大增益变化（amount ±100 → 起音增益 0.1x ~ 3.2x）
+    constexpr float kMaxBoost = 2.2f;
+    constexpr float kMinGain = 0.1f;
+    // 瞬态死区：稳态信号下快包络跟峰值、慢包络跟均值，天然有 ~0.09 的差值
+    // （正弦实测），不加死区会持续调制音量。只有超出死区的部分才算真起音。
+    constexpr float kTransientDeadZone = 0.15f;
 
     float timeToCoeff(float ms, double sampleRate)
     {
@@ -13,8 +17,8 @@ namespace
 }
 
 VoiceEdge::VoiceEdge(juce::AudioProcessorValueTreeState& apvts, std::atomic<double>& osSampleRate)
-    : amountParam  (apvts.getRawParameterValue(ParamID::edgeAmount)),
-      bypassParam  (apvts.getRawParameterValue(ParamID::edgeBypass)),
+    : amountParam(apvts.getRawParameterValue(ParamID::edgeAmount)),
+      bypassParam(apvts.getRawParameterValue(ParamID::edgeBypass)),
       dspRate(&osSampleRate)
 {
 }
@@ -22,23 +26,23 @@ VoiceEdge::VoiceEdge(juce::AudioProcessorValueTreeState& apvts, std::atomic<doub
 void VoiceEdge::prepare(const juce::dsp::ProcessSpec& spec)
 {
     sampleRate = dspRate->load(); // OS 采样率（模块在超采样链内运行）
-    envAttack = timeToCoeff(1.0f, sampleRate);   // 包络 attack 1ms（跟得上起音）
-    envRelease = timeToCoeff(50.0f, sampleRate); // 包络 release 50ms
-    gainSmoothCoeff = timeToCoeff(1.5f, sampleRate); // 增益平滑 1.5ms（限制变化率降失真，同时保留瞬态效果）
+    fastAttack  = timeToCoeff(0.3f, sampleRate);   // 快包络：跟得上字头
+    fastRelease = timeToCoeff(15.0f, sampleRate);
+    slowAttack  = timeToCoeff(25.0f, sampleRate);  // 慢包络：跟节目电平
+    slowRelease = timeToCoeff(250.0f, sampleRate);
+    gainSmoothCoeff = timeToCoeff(1.5f, sampleRate); // 限制变化率降调制失真
     reset();
 }
 
 void VoiceEdge::reset()
 {
-    env[0] = env[1] = 0.0f;
+    fastEnv[0] = fastEnv[1] = slowEnv[0] = slowEnv[1] = 0.0f;
     gainSmooth[0] = gainSmooth[1] = 1.0f;
 }
 
 void VoiceEdge::process(const juce::dsp::ProcessContextReplacing<float>& context)
 {
     auto& outputBlock = context.getOutputBlock();
-
-
     if (outputBlock.getNumSamples() == 0)
         return;
 
@@ -50,7 +54,7 @@ void VoiceEdge::process(const juce::dsp::ProcessContextReplacing<float>& context
         bypassMix += bypAlpha * (bypTarget - bypassMix);
     }
 
-    const float amount = jlimit(-100.0f, 100.0f, amountParam->load()) / 100.0f * bypassMix; // -1 ~ +1
+    const float amount = jlimit(-100.0f, 100.0f, amountParam->load()) / 100.0f * bypassMix;
 
     const auto numChannels = outputBlock.getNumChannels();
     const auto numSamples = outputBlock.getNumSamples();
@@ -59,7 +63,8 @@ void VoiceEdge::process(const juce::dsp::ProcessContextReplacing<float>& context
     {
         auto* data = outputBlock.getChannelPointer(ch);
         const size_t si = ch < 2 ? ch : 1;
-        float& e = env[si];
+        float& fe = fastEnv[si];
+        float& se = slowEnv[si];
         float& gs = gainSmooth[si];
 
         for (size_t n = 0; n < numSamples; ++n)
@@ -67,15 +72,17 @@ void VoiceEdge::process(const juce::dsp::ProcessContextReplacing<float>& context
             const float x = data[n];
             const float a = std::abs(x);
 
-            // 包络跟随（快 attack 中速 release）
-            e += (a > e ? envAttack : envRelease) * (a - e);
+            // 双包络跟随：快的抓字头，慢的跟节目电平
+            fe += (a > fe ? fastAttack : fastRelease) * (a - fe);
+            se += (a > se ? slowAttack : slowRelease) * (a - se);
 
-            // 瞬态强度 = 输入瞬时值超出包络的比例（起音瞬间 a>>e → 1；稳态 a≈e → 0）
-            float rising = (a - e) / (a + 1.0e-6f);
-            rising = jlimit(0.0f, 1.0f, rising);
+            // 瞬态强度 = 快包络超出慢包络的比例（起音期间大，稳态趋零）
+            const float raw = (fe - se) / (se + 1.0e-6f);
+            const float transient = jlimit(0.0f, 1.0f,
+                                           (raw - kTransientDeadZone) / (1.0f - kTransientDeadZone));
 
-            // 增益平滑：限制变化率（3ms），降低时变增益的调制失真
-            const float target = 1.0f + amount * kMaxBoost * rising;
+            // 正 amount 抬起起音（棱角），负 amount 压扁起音（圆滑）
+            const float target = jmax(kMinGain, 1.0f + amount * kMaxBoost * transient);
             gs += gainSmoothCoeff * (target - gs);
             data[n] = x * gs;
         }

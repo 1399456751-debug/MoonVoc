@@ -381,25 +381,30 @@ int main()
         juce::MidiBuffer midi;
         const int warmup = 100, measure = 1000;
 
-        // 稀疏脉冲（每 8 块一个 240 样本宽 0.8 脉冲 = 5ms 起音，接近真实人声）
-        const auto pulseRms = [&](float amount) -> float
+        // v0.8.0 双包络差值：稀疏脉冲下测峰值比（正=棱角增强起音，负=圆滑削弱起音）
+        // 脉冲间隔 24 块 = 256ms > 慢包络 release 250ms；脉冲宽 240 样本 = 5ms > 增益平滑 1.5ms
+        const auto pulsePeak = [&](float amount) -> float
         {
             *apvts.getRawParameterValue("edgeAmount") = amount;
-            double outSq = 0.0;
-            for (int b = 0; b < warmup + measure; ++b)
+            float peak = 0.0f;
+            for (int b = 0; b < 96; ++b)
             {
+                const bool hit = (b % 24 == 12);
                 for (int c = 0; c < 2; ++c)
                     for (int n = 0; n < 512; ++n)
-                        buf.setSample(c, n, (b % 8 == 0 && n < 240) ? 0.8f : 0.05f);
+                        buf.setSample(c, n, (hit && n < 240) ? 0.8f : 0.0f);
                 processor.processBlock(buf, midi);
-                if (b >= warmup)
+                // 跳过前两个脉冲让包络稳定；只测脉冲后半段（n>=120）——增益平滑 1.5ms，
+                // 压制方向要 1~2ms 才降到位，测脉冲尖头会漏掉负方向的效果
+                if (b >= 48 && hit)
                     for (int c = 0; c < 2; ++c)
-                        for (int n = 0; n < 512; ++n)
-                            outSq += (double) buf.getSample(c, n) * buf.getSample(c, n);
+                        for (int n = 120; n < 240; ++n)
+                            peak = juce::jmax(peak, std::abs(buf.getSample(c, n)));
             }
-            return (float) std::sqrt(outSq / (2.0 * measure * 512.0));
+            return peak / 0.8f;
         };
 
+        // 调制失真检查：稳态相干正弦下 Edge 应近乎透明
         const auto sineRms = [&](float amount) -> float
         {
             *apvts.getRawParameterValue("edgeAmount") = amount;
@@ -418,16 +423,22 @@ int main()
             return (float) std::sqrt(outSq / (2.0 * measure * 512.0)) / (0.25f * 0.7071f);
         };
 
-        const float pulse0 = pulseRms(0.0f);
-        const float boostRms = pulseRms(100.0f);
-        const float roundRms = pulseRms(-100.0f);
+        const float rOff = pulsePeak(0.0f);
+        const float rPos = pulsePeak(100.0f);
+        const float rNeg = pulsePeak(-100.0f);
+        // 以 off 为基准比较（超采样 FIR 在脉冲上有 ~1% 振铃过冲，不能用绝对 1.0）
+        TRACE("edge v080: off x%.3f  pos x%.3f  neg x%.3f %s\n", rOff, rPos, rNeg,
+              (std::abs(rOff - 1.0f) < 0.03f && rPos > rOff * 1.8f && rNeg < rOff * 0.6f) ? "OK" : "BAD");
+        if (! (std::abs(rOff - 1.0f) < 0.03f && rPos > rOff * 1.8f && rNeg < rOff * 0.6f))
+            return 1;
+
         const float sinePlus = sineRms(100.0f);
         const float sineMinus = sineRms(-100.0f);
-        TRACE("edge check: pulse 0=%.3f boost=%.3f round=%.3f, sine +%.2f -%.2f %s\n",
-              pulse0, boostRms, roundRms, sinePlus, sineMinus,
-              boostRms > pulse0 * 1.08f && roundRms < pulse0 * 0.92f
-                  && sinePlus > 0.9f && sinePlus < 1.1f
-                  && sineMinus > 0.9f && sineMinus < 1.1f ? "OK" : "BAD");
+        TRACE("edge v080: sine +%.3f -%.3f %s\n", sinePlus, sineMinus,
+              (sinePlus > 0.9f && sinePlus < 1.1f && sineMinus > 0.9f && sineMinus < 1.1f) ? "OK" : "BAD");
+        if (! (sinePlus > 0.9f && sinePlus < 1.1f && sineMinus > 0.9f && sineMinus < 1.1f))
+            return 1;
+        TRACE("edge v080: OK\n");
     }
 
     // 旁通检查：各模块全开 + bypass 打开 → 输出应回到直通（RMS 比 ≈ 1）
