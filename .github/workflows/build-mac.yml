@@ -31,12 +31,29 @@ jobs:
 
       - name: Validate AU (auval) - must pass for Logic
         run: |
-          mkdir -p ~/Library/Audio/Plug-Ins/Components
+          # JUCE 的 COPY_PLUGIN_AFTER_BUILD 会把【未签名】的构件自动装到这里，
+          # macOS 秒级扫描后就缓存住它 → auval 拿到未签名版本报 error -50。
+          # 所以先删掉自动安装的副本 + 杀 AU 注册守护进程清缓存，再放签名版。
           rm -rf ~/Library/Audio/Plug-Ins/Components/MoonVoc.component
+          killall -9 AudioComponentRegistrar 2>/dev/null || true
+          sleep 5
+          mkdir -p ~/Library/Audio/Plug-Ins/Components
           cp -R "build/MoonVoc_artefacts/Release/AU/MoonVoc.component" ~/Library/Audio/Plug-Ins/Components/
           xattr -cr ~/Library/Audio/Plug-Ins/Components/MoonVoc.component
-          sleep 3
-          auval -v aufx MoVc Tujm
+          # 组件注册有延迟 → 重试最多 ~90 秒。
+          # 失败必须显式 exit 1（不要用 || echo 兜底，那会把 FAIL 吞掉）
+          for i in $(seq 1 9); do
+            sleep 10
+            if auval -v aufx MoVc Tujm > /tmp/auval.log 2>&1; then
+              cat /tmp/auval.log
+              echo "auval PASS (attempt $i)"
+              exit 0
+            fi
+            echo "--- auval attempt $i failed, retrying ---"
+          done
+          cat /tmp/auval.log
+          echo "auval FAILED after retries"
+          exit 1
 
       - name: Package VST3 + AU + Standalone
         run: |
