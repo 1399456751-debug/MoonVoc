@@ -41,11 +41,11 @@ namespace Strings
             case kAirFreq22:   return S8("22 kHz");
             case kCompression: return zh ? S8("压缩量")   : S8("Compression");
             case kMakeup:      return zh ? S8("补偿")     : S8("Makeup");
-            case kStylePop:    return zh ? S8("流行")     : S8("Pop");
-            case kStyleRap:    return zh ? S8("说唱")     : S8("Rap");
+            case kStylePop:    return zh ? S8("柔光")     : S8("Glow");
+            case kStyleRap:    return zh ? S8("锻造")     : S8("Forge");
             case kReverbAmt:   return zh ? S8("混响量")   : S8("Reverb");
-            case kModePop:     return zh ? S8("流行")     : S8("Pop");
-            case kModeRap:     return zh ? S8("说唱大混响") : S8("Rap Big");
+            case kModePop:     return zh ? S8("薄纱")     : S8("Veil");
+            case kModeRap:     return zh ? S8("深渊")     : S8("Abyss");
             case kDriveA:      return zh ? S8("驱动A")    : S8("Drive A");
             case kDriveB:      return zh ? S8("驱动B")    : S8("Drive B");
             case kBypass:      return zh ? S8("旁通")     : S8("BYP");

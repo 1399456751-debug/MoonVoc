@@ -31,9 +31,9 @@ AP::ParameterLayout MoonVocProcessor::createParameterLayout()
     auto pct = juce::NormalisableRange<float>(0.0f, 100.0f, 0.1f);
 
     // 全局
-    p.push_back(std::make_unique<Param>(ParamID::inputGain,  "Input",   -12.0f, 12.0f, 0.0f));
-    p.push_back(std::make_unique<Param>(ParamID::outputGain, "Output",  -12.0f, 12.0f, 0.0f));
-    p.push_back(std::make_unique<Param>(ParamID::headroom,   "Headroom", -12.0f, 12.0f, 0.0f));
+    p.push_back(std::make_unique<Param>(ParamID::inputGain,  "Input",   -18.0f, 18.0f, 0.0f));
+    p.push_back(std::make_unique<Param>(ParamID::outputGain, "Output",  -18.0f, 18.0f, 0.0f));
+    p.push_back(std::make_unique<Param>(ParamID::headroom,   "Headroom", -18.0f, 18.0f, 0.0f));
     // 默认 16x：延迟可接受，追求最低失真（2x/4x/8x/16x 无 Off）
     p.push_back(std::make_unique<Choice>(ParamID::oversampling, "Oversampling",
         juce::StringArray{ "2x", "4x", "8x", "16x" }, 3));
@@ -48,7 +48,7 @@ AP::ParameterLayout MoonVocProcessor::createParameterLayout()
 
     // 压缩
     p.push_back(std::make_unique<Choice>(ParamID::compMode, "Style",
-        juce::StringArray{ "Pop", "Rap" }, 0));
+        juce::StringArray{ "Glow", "Forge" }, 0));
     p.push_back(std::make_unique<Param>(ParamID::compAmount, "Compression", pct, 0.0f));
     p.push_back(std::make_unique<Param>(ParamID::compMakeup, "Makeup", 0.0f, 12.0f, 0.0f));
 
@@ -65,7 +65,7 @@ AP::ParameterLayout MoonVocProcessor::createParameterLayout()
     // 混响（链路最后）
     p.push_back(std::make_unique<Param>(ParamID::reverbAmount, S8("混响量 Reverb"), pct, 0.0f));
     p.push_back(std::make_unique<Choice>(ParamID::reverbMode, S8("混响模式 Reverb Mode"),
-        juce::StringArray{ S8("流行 Pop"), S8("说唱 Rap") }, 0));
+        juce::StringArray{ S8("薄纱 Veil"), S8("深渊 Abyss") }, 0));
 
     // 旁通（默认关 = 不旁通）
     p.push_back(std::make_unique<Bool>(ParamID::eqBypass,     S8("EQ旁通 EQ Bypass"), false));
@@ -76,7 +76,7 @@ AP::ParameterLayout MoonVocProcessor::createParameterLayout()
 
     // UI 设置
     p.push_back(std::make_unique<Choice>(ParamID::uiLanguage, S8("语言 Language"),
-        juce::StringArray{ S8("中文"), "English" }, 0));
+        juce::StringArray{ S8("中文"), "English" }, 1));
     p.push_back(std::make_unique<Bool>(ParamID::uiLargeFont, S8("大字字体 Large Font"), false));
     // 连续缩放（拖窗口顺滑），下拉框给 9 个预设档
     p.push_back(std::make_unique<Param>(ParamID::uiScale, S8("界面缩放 Scale"),

@@ -950,6 +950,37 @@ int main()
         TRACE("flat16 check: OK\n");
     }
 
+    // v0.8.0：参数范围 / 默认值 / 模式名
+    {
+        auto* in  = processor.apvts.getParameter("inputGain");
+        auto* out = processor.apvts.getParameter("outputGain");
+        auto* hr  = processor.apvts.getParameter("headroom");
+        const bool rangeOk = in->getNormalisableRange().end == 18.0f
+                          && out->getNormalisableRange().end == 18.0f
+                          && hr->getNormalisableRange().end == 18.0f
+                          && in->getNormalisableRange().start == -18.0f;
+        TRACE("v080 range check: +-18dB %s\n", rangeOk ? "OK" : "BAD");
+        if (! rangeOk) return 1;
+
+        // 默认语言 = 英文（AudioParameterChoice 构造后 getIndex() 即默认索引）
+        auto* lang = dynamic_cast<juce::AudioParameterChoice*>(processor.apvts.getParameter("uiLanguage"));
+        const bool langOk = lang != nullptr && lang->getIndex() == 1 && lang->choices[1] == "English";
+        TRACE("v080 default lang: %s\n", langOk ? "OK (English)" : "BAD");
+        if (! langOk) return 1;
+
+        auto* cm = dynamic_cast<juce::AudioParameterChoice*>(processor.apvts.getParameter("compMode"));
+        auto* rm = dynamic_cast<juce::AudioParameterChoice*>(processor.apvts.getParameter("reverbMode"));
+        const bool modeOk = cm != nullptr && rm != nullptr
+                         && cm->choices[0] == "Glow" && cm->choices[1] == "Forge"
+                         && rm->choices[0].contains("Veil") && rm->choices[1].contains("Abyss");
+        TRACE("v080 mode names: comp=%s/%s reverb=%s/%s %s\n",
+              cm ? cm->choices[0].toRawUTF8() : "?", cm ? cm->choices[1].toRawUTF8() : "?",
+              rm ? rm->choices[0].toRawUTF8() : "?", rm ? rm->choices[1].toRawUTF8() : "?",
+              modeOk ? "OK" : "BAD");
+        if (! modeOk) return 1;
+        TRACE("v080 params check: OK\n");
+    }
+
     juce::Logger::writeToLog("Headless test passed (all blocks finite)");
     return 0;
 }
