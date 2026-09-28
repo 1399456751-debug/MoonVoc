@@ -30,11 +30,12 @@ juce_add_plugin(MoonVoc
 
 juce_generate_juce_header(MoonVoc)
 
-# 嵌入字体（Montserrat Bold / ExtraBold，OFL 开源协议）
-juce_add_binary_data(MoonVocFonts
+# 嵌入资源（Montserrat Bold/ExtraBold 字体，OFL；关于界面插画 artwork.png，TUJZMIXING 自有）
+juce_add_binary_data(MoonVocAssets
     SOURCES
         fonts/Montserrat-Bold.ttf
         fonts/Montserrat-ExtraBold.ttf
+        assets/artwork.png
 )
 
 target_sources(MoonVoc PRIVATE
@@ -49,7 +50,7 @@ target_sources(MoonVoc PRIVATE
     Source/dsp/VoiceEdge.cpp
 )
 
-target_link_libraries(MoonVoc PRIVATE MoonVocFonts)
+target_link_libraries(MoonVoc PRIVATE MoonVocAssets)
 
 target_compile_definitions(MoonVoc PUBLIC
     JUCE_WEB_BROWSER=0
@@ -94,7 +95,7 @@ target_compile_definitions(MoonVocHeadlessTest PRIVATE
 )
 
 target_link_libraries(MoonVocHeadlessTest PRIVATE
-    MoonVocFonts
+    MoonVocAssets
     juce::juce_audio_utils
     juce::juce_dsp
     juce::juce_recommended_config_flags
@@ -128,7 +129,7 @@ target_compile_definitions(MoonVocRender PRIVATE
 )
 
 target_link_libraries(MoonVocRender PRIVATE
-    MoonVocFonts
+    MoonVocAssets
     juce::juce_audio_utils
     juce::juce_dsp
     juce::juce_audio_formats
@@ -163,7 +164,7 @@ target_compile_definitions(MoonVocUiSnapshot PRIVATE
 )
 
 target_link_libraries(MoonVocUiSnapshot PRIVATE
-    MoonVocFonts
+    MoonVocAssets
     juce::juce_audio_utils
     juce::juce_dsp
     juce::juce_recommended_config_flags
