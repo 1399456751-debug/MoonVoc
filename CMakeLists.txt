@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(MoonVoc VERSION 0.9.0)
+project(MoonVoc VERSION 1.0.0)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -92,8 +92,8 @@ target_compile_definitions(MoonVocHeadlessTest PRIVATE
     JUCE_USE_CURL=0
     JucePlugin_Name="MoonVoc"
     JucePlugin_Manufacturer="TUJZMIXING"
-    JucePlugin_VersionString="0.9.0"
-    JucePlugin_VersionCode=0x900
+    JucePlugin_VersionString="1.0.0"
+    JucePlugin_VersionCode=0x10000   # 1.0.0（major<<16 | minor<<8 | patch）
 )
 
 target_link_libraries(MoonVocHeadlessTest PRIVATE
@@ -127,8 +127,8 @@ target_compile_definitions(MoonVocRender PRIVATE
     JUCE_USE_CURL=0
     JucePlugin_Name="MoonVoc"
     JucePlugin_Manufacturer="TUJZMIXING"
-    JucePlugin_VersionString="0.9.0"
-    JucePlugin_VersionCode=0x900
+    JucePlugin_VersionString="1.0.0"
+    JucePlugin_VersionCode=0x10000   # 1.0.0（major<<16 | minor<<8 | patch）
 )
 
 target_link_libraries(MoonVocRender PRIVATE
@@ -163,8 +163,8 @@ target_compile_definitions(MoonVocUiSnapshot PRIVATE
     JUCE_USE_CURL=0
     JucePlugin_Name="MoonVoc"
     JucePlugin_Manufacturer="TUJZMIXING"
-    JucePlugin_VersionString="0.9.0"
-    JucePlugin_VersionCode=0x900
+    JucePlugin_VersionString="1.0.0"
+    JucePlugin_VersionCode=0x10000   # 1.0.0（major<<16 | minor<<8 | patch）
 )
 
 target_link_libraries(MoonVocUiSnapshot PRIVATE

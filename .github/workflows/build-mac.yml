@@ -62,9 +62,9 @@ jobs:
           cp -R "build/MoonVoc_artefacts/Release/AU/MoonVoc.component" dist/MoonVoc_mac/
           cp -R "build/MoonVoc_artefacts/Release/Standalone/MoonVoc.app" dist/MoonVoc_mac/
           cp README_Mac.txt dist/MoonVoc_mac/
-          cd dist && ditto -c -k MoonVoc_mac MoonVoc_0.9.0_mac.zip
+          cd dist && ditto -c -k MoonVoc_mac MoonVoc_1.0_Totality_mac.zip
 
       - uses: actions/upload-artifact@v4
         with:
-          name: MoonVoc_0.9.0_mac
-          path: dist/MoonVoc_0.9.0_mac.zip
+          name: MoonVoc_1.0_Totality_mac
+          path: dist/MoonVoc_1.0_Totality_mac.zip

@@ -107,9 +107,13 @@ void AboutOverlay::resized()
 
 void AboutOverlay::rebuildBlocks()
 {
+    // 1.0 的发布代号（拉丁文，中英一致，不进 Strings 表）
+    const juce::String releaseName = "TOTALITY";
+
     // 分隔符是 UTF-8（·），必须走 S8() —— 裸 const char* 会被按 ASCII 解码
     const juce::String versionLine = Strings::get (Strings::kVersion, zh) + " "
-                                   + JucePlugin_VersionString + S8("   ·   TUJZMIXING");
+                                   + JucePlugin_VersionString + "   ·   " + releaseName
+                                   + S8("   ·   TUJZMIXING");
 
     const auto body = Theme::uiFont (11.5f);
 
