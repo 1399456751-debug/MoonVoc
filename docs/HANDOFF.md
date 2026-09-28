@@ -109,8 +109,9 @@ moonvoc/
       ② `setLineSpacing` 是**额外**行距不是倍数（倍数要换算 `font.getHeight() * (m-1)`）；
       ③ 规则是「**非 ASCII 内容一律走 `S8()`**」—— 中文串，以及含 `·`／全角空格的英文串都得包 `S8()`，
       **纯 ASCII** 的英文串才用裸 `juce::String`。要避免的是 `juce::String(const char*)` 按 ASCII
-      逐字节解码（`·` 显示成 `Â·`），**不是**「避免出现非 ASCII 字符」。据此，英文串里的 `−85`/`→`/`©`
-      换成了 `-85`/`->`/`(c)`，而 `·` 与全角空格照留（只是包上 `S8()`）
+      逐字节解码（`·` 显示成 `Â·`），**不是**「避免出现非 ASCII 字符」。所以英文串里只要含
+      `·`／`→`／`©`／`−`（U+2212）／破折号 `—` 或全角空格，就跟中文串一样包 `S8()`，
+      只有纯 ASCII 的英文串才保持裸 `juce::String` —— 没有、也不该把英文里这些字形改写成 ASCII 替身
 - [x] **验证**：HeadlessTest EXIT=0（FAIL 计数 0、首行 `strings table filled: OK`）；
       UiSnapshot `dumpLayout: FAIL=0` **×7**（4 张既有截图 + 3 张关于，每状态各调一次）+
       `checkAboutOverlay: FAIL=0`（中英 × 标准/大字 4 组合）+ `checkAboutInteraction: FAIL=0`（开合回归），

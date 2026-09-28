@@ -225,26 +225,31 @@ void AboutOverlay::paint (juce::Graphics& g)
     g.setColour (Theme::panelEdge);
     g.fillRect (cardBounds.getX() + kImageColW, cardBounds.getY(), 1, cardBounds.getHeight());
 
-    // 右栏文字块
-    for (const auto& b : blocks)
+    // 右栏文字裁剪到文字区：内容若超出卡片上限会落在卡片外，宁可裁掉也不能画到遮罩上
     {
-        if (b.gradient)
+        juce::Graphics::ScopedSaveState save (g);
+        g.reduceClipRegion (rightColumn);
+
+        for (const auto& b : blocks)
         {
-            // 渐变跨度取字形实际宽度，不是文字块宽度 —— 块宽 564 而 "MoonVoc" 只占约 73px，
-            // 按块宽铺渐变会让可见部分几乎全是青蓝、珊瑚端完全看不见
-            //（品牌标题同样处理，见 paintCanvas 里 titleBox 的渐变）
-            const int textW = juce::GlyphArrangement::getStringWidthInt (b.font, b.text);
-            const juce::ColourGradient grad (Theme::accent, (float) b.bounds.getX(), 0.0f,
-                                             Theme::accent2, (float) (b.bounds.getX() + textW), 0.0f, false);
-            g.setGradientFill (grad);
-            g.setFont (b.font);
-            g.drawText (b.text, b.bounds, juce::Justification::centredLeft);
-        }
-        else
-        {
-            juce::TextLayout layout;
-            layout.createLayout (attributeOf (b), (float) b.bounds.getWidth());
-            layout.draw (g, b.bounds.toFloat());
+            if (b.gradient)
+            {
+                // 渐变跨度取字形实际宽度，不是文字块宽度 —— 块宽 564 而 "MoonVoc" 只占约 73px，
+                // 按块宽铺渐变会让可见部分几乎全是青蓝、珊瑚端完全看不见。
+                // 换成固定宽度的盒子也一样：盒子比字形宽，远端颜色就落在字形之外，等于白给
+                const int textW = juce::GlyphArrangement::getStringWidthInt (b.font, b.text);
+                const juce::ColourGradient grad (Theme::accent, (float) b.bounds.getX(), 0.0f,
+                                                 Theme::accent2, (float) (b.bounds.getX() + textW), 0.0f, false);
+                g.setGradientFill (grad);
+                g.setFont (b.font);
+                g.drawText (b.text, b.bounds, juce::Justification::centredLeft);
+            }
+            else
+            {
+                juce::TextLayout layout;
+                layout.createLayout (attributeOf (b), (float) b.bounds.getWidth());
+                layout.draw (g, b.bounds.toFloat());
+            }
         }
     }
 

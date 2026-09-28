@@ -49,6 +49,9 @@ static int checkAboutOverlay()
             check (ov.getImageBounds().getHeight() <= card.getHeight(), "artwork fits card height");
             check (ov.getRightColumnBounds().getX() >= ov.getImageBounds().getRight(),
                    "about columns disjoint");
+            check (ov.getBlocks().back().bounds.getBottom()
+                       <= ov.getRightColumnBounds().getBottom(),
+                   "about right column text fits");
 
             const auto& blocks = ov.getBlocks();
             for (size_t i = 0; i < blocks.size(); ++i)
