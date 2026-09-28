@@ -4,6 +4,7 @@
 #include "PluginProcessor.h"
 #include "UI/MoonVocLookAndFeel.h"
 #include "UI/MoonVocStrings.h"
+#include "UI/AboutOverlay.h"
 
 // UI：水平信号链卡片式（顶部全局条 → 模块卡片横排 → 底部 Monitor + Engine）
 // 缩放实现：全部控件放在 Canvas 子容器里按设计坐标（1280×720）布局，窗口变大时对
@@ -21,6 +22,13 @@ public:
     void dumpLayout() const;
     // 测试用：手动推进一次 timer 逻辑（离线快照更新电平表/锁频标签）
     void demoTick() { timerCallback(); }
+
+    // 关于浮层入口（ⓘ 按钮 / 截图与自检用；animate=false 跳过淡入）
+    void openAbout (bool animate = true);
+
+    // 自检/测试读取用（与 dumpLayout 同性质的测试面，不参与生产逻辑）
+    InfoBadge&    getInfoBadge()   noexcept { return infoBadge; }
+    AboutOverlay& getAboutOverlay() noexcept { return aboutOverlay; }
 
     static constexpr int kDesignW = 1496; // 设计基准宽度（6 卡横排）
     static constexpr int kDesignH = 672;  // 设计基准高度（去掉底部大片空白）
@@ -70,6 +78,9 @@ private:
     float meterPeakIn = -60.0f, meterPeakOut = -60.0f; // 电平峰值保持
     juce::Image bgCache;   // 静态背景缓存（渐变 + 抽象装饰），resized 重渲染
     juce::Image bgBlurCache; // 毛玻璃底（背景模糊版），只在 resized 重算
+
+    AboutOverlay aboutOverlay;   // 「关于」浮层（覆盖整个设计区）
+    InfoBadge    infoBadge;      // 全局卡右上角的 ⓘ 入口
 
     // 卡片区域（resized 记录，paint 绘制）
     juce::Rectangle<int> cardGlobal, cardReverb, cardEq, cardComp, cardDeEss, cardSat, cardEdge;

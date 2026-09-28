@@ -141,5 +141,30 @@ int main()
     shot("ui_snapshot_en.png",         false, false, 1.0f);  // English
     shot("ui_snapshot_zoom200.png",    true,  false, 2.0f);  // 中文 200% 缩放
 
+    // 关于浮层：中文 / 英文 / 中文大字（animate=false 关掉淡入，否则快照时还是透明的）
+    const auto shotAbout = [&] (const juce::String& fileName, bool zh, bool large)
+    {
+        setP ("uiLanguage", zh ? 0.0f : 1.0f);
+        setP ("uiLargeFont", large ? 1.0f : 0.0f);
+        setP ("uiScale", 1.0f);
+
+        std::unique_ptr<juce::AudioProcessorEditor> editor (processor.createEditor());
+        editor->setSize (MoonVocEditor::kDesignW, MoonVocEditor::kDesignH);
+        editor->resized();
+
+        if (auto* me = dynamic_cast<MoonVocEditor*> (editor.get()))
+        {
+            me->dumpLayout();
+            me->openAbout (false);
+            for (int i = 0; i < 30; ++i) me->demoTick();
+        }
+
+        writePng (editor->createComponentSnapshot (editor->getLocalBounds(), true, 1.0f), fileName);
+    };
+
+    shotAbout ("ui_snapshot_about.png",       true,  false);
+    shotAbout ("ui_snapshot_about_en.png",    false, false);
+    shotAbout ("ui_snapshot_about_large.png", true,  true);
+
     return 0;
 }

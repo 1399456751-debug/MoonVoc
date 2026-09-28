@@ -179,6 +179,11 @@ MoonVocEditor::MoonVocEditor(MoonVocProcessor& p)
     applyFontMode();
     applyScaleFromParam();
 
+    // 关于浮层 + ⓘ 入口。加入顺序不影响层级：open() 里会 toFront() 盖到所有控件之上
+    infoBadge.onClick = [this] { openAbout(); };
+    canvas.addAndMakeVisible (infoBadge);
+    canvas.addAndMakeVisible (aboutOverlay);
+
     startTimerHz(10);
 }
 
@@ -275,6 +280,8 @@ void MoonVocEditor::applyLanguage()
         b->setButtonText(byp);
     largeFontBtn.setButtonText(Strings::get(Strings::kLargeFont, zh));
 
+    aboutOverlay.setLanguage (zh);
+
     canvas.repaint();
 }
 
@@ -311,6 +318,12 @@ void MoonVocEditor::applyScaleFromParam()
     settingScale = true;
     setSize((int) std::lround(kDesignW * s), (int) std::lround(kDesignH * s));
     settingScale = false;
+}
+
+void MoonVocEditor::openAbout (bool animate)
+{
+    aboutOverlay.setLanguage (currentZh);
+    aboutOverlay.open (animate);
 }
 
 // 编辑器本体：只负责把 Canvas 摆好并按缩放施加 transform（JUCE 推荐做法）
@@ -550,6 +563,25 @@ void MoonVocEditor::dumpLayout() const
           && grCompRect.getY() < grDeEssRect.getY(), "meter rows ascending (4)");
     check(meterInRect.getWidth() == meterOutRect.getWidth() && meterOutRect.getWidth() == grCompRect.getWidth()
           && grCompRect.getWidth() == grDeEssRect.getWidth(), "meter widths equal");
+
+    // ⓘ 入口：必须在全局卡内、不压到右端指示灯、且真的接上了开合
+    owned (cardGlobal, "infoBadge", infoBadge.getBounds());
+    check (! infoBadge.getBounds().intersects (indicatorRect), "infoBadge clear of indicator");
+    check (infoBadge.onClick != nullptr, "info badge wired to about overlay");
+
+    // 关于浮层：覆盖画布、卡片不越界、两栏与文字块不重叠
+    check (aboutOverlay.getBounds() == juce::Rectangle<int> (0, 0, kDesignW, kDesignH),
+           "about overlay covers canvas");
+    check (juce::Rectangle<int> (0, 0, kDesignW, kDesignH).contains (aboutOverlay.getCardBounds()),
+           "about card inside canvas");
+    check (aboutOverlay.getRightColumnBounds().getX() >= aboutOverlay.getImageBounds().getRight(),
+           "about columns do not overlap");
+    {
+        const auto& bl = aboutOverlay.getBlocks();
+        for (size_t i = 0; i < bl.size(); ++i)
+            for (size_t j = i + 1; j < bl.size(); ++j)
+                check (! bl[i].bounds.intersects (bl[j].bounds), "about text blocks do not overlap");
+    }
 
     std::printf("dumpLayout: FAIL=%d\n", fail);
 }
@@ -974,4 +1006,9 @@ void MoonVocEditor::layoutCanvas()
         oversamplingLabel.setBounds(juce::Rectangle<int>(cardOs.getX() + 44, osY + 3, 120, 22));
         oversamplingBox.setBounds(juce::Rectangle<int>(cardOs.getX() + 168, osY, 130, 28));
     }
+
+    // ⓘ 入口：全局卡右上角，右缩 16 / 上缩 14（右下 10px 外就是工作电平指示灯，不能压）
+    infoBadge.setBounds (cardGlobal.getRight() - 16 - 26, cardGlobal.getY() + 14, 26, 26);
+    // 关于浮层：覆盖整个设计区（setBounds 会触发 resized → 重新量算版面）
+    aboutOverlay.setBounds (0, 0, kDesignW, kDesignH);
 }
