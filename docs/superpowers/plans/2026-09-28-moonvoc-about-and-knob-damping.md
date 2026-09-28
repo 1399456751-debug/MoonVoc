@@ -19,7 +19,8 @@
   - `juce::TextLayout`：`createLayout (const AttributedString&, float maxWidth)` + `getHeight()` + `draw (Graphics&, Rectangle<float>)`。
   - `juce::Font` 只有单参构造（用 `.withHeight`）；`juce::Colour` 非 constexpr（用 `const`）。
   - `juce::String (const char*)` 按 **ASCII** 解码 —— 中文字面量必须走 `ParamIDs.h` 的 `S8()`。
-- **中文文案一律 `S8()`**；新增 `Strings::Key` 必须中英双份，缺一不可（Task 2 有自检）。
+- **非 ASCII 内容一律走 `S8()`** —— 中文，以及含 `·`、全角空格等非 ASCII 字符的英文串；纯 ASCII 的英文串用裸 `juce::String`。
+  要避免的是「非 ASCII 字节被当 ASCII 解码」（`·` 变 `Â·`），不是「出现非 ASCII 字符」（Task 2 曾误读此规则，见 Task 2 Step 3 的注意）。新增 `Strings::Key` 必须中英双份，缺一不可（Task 2 有自检）。
 - **不动**：全部 DSP、`ParamID`（不新增音频参数）、现有布局与配色、现有控件行为。
 - **版本号**：保持在 `0.9.0`，不打包、不发布（发布等用户指示）。
 - **测试基线**：改完必须 `MoonVocHeadlessTest.exe` EXIT=0（无 FAIL）且 `MoonVocUiSnapshot.exe` 打印 `dumpLayout: FAIL=0`。
@@ -182,17 +183,17 @@ Expected: **编译失败** —— `no member named 'allKeysFilled' in namespace 
             case kAboutChainTag:return zh ? S8("信号链") : S8("SIGNAL CHAIN");
             case kAboutModules:
                 return zh ? S8("四段智能 EQ　Thick · De-Box · Clarity · Air\n三级压缩　FET · 光电 · 并行\n齿音控制　→　双槽染色　→　瞬态整形　→　混响")
-                          : juce::String("Four-band intelligent EQ　Thick · De-Box · Clarity · Air\nThree-stage compression　FET · Optical · Parallel\nDe-Ess -> Dual-stage saturation -> Transient -> Reverb");
+                          : S8("Four-band intelligent EQ　Thick · De-Box · Clarity · Air\nThree-stage compression　FET · Optical · Parallel\nDe-Ess -> Dual-stage saturation -> Transient -> Reverb");
             case kAboutNoteTag: return zh ? S8("透明") : S8("TRANSPARENCY");
             case kAboutNote:
                 return zh ? S8("所有算法以透明为基准：参数归零时，信号逐样本还原；超采样链采用线性相位 FIR 半带滤波，4x 下残余失真低于 −85 dB。")
                           : juce::String("Every algorithm is built around transparency: with all parameters at zero the signal is returned sample for sample, and the oversampling stage uses linear-phase FIR half-band filters, keeping residual distortion below -85 dB at 4x.");
             case kAboutContact:
                 return zh ? S8("反馈与建议　1399456751@qq.com　·　github.com/1399456751-debug")
-                          : juce::String("Feedback　1399456751@qq.com　·　github.com/1399456751-debug");
+                          : S8("Feedback　1399456751@qq.com　·　github.com/1399456751-debug");
             case kAboutCredits:
                 return zh ? S8("© 2026 TUJZMIXING　·　基于 JUCE 构建　·　去齿音改编自 Airwindows DeBess（MIT，© Chris Johnson）")
-                          : juce::String("(c) 2026 TUJZMIXING　·　Built on JUCE　·　De-Esser adapted from Airwindows DeBess (MIT, (c) Chris Johnson)");
+                          : S8("(c) 2026 TUJZMIXING　·　Built on JUCE　·　De-Esser adapted from Airwindows DeBess (MIT, (c) Chris Johnson)");
 ```
 
 在 `namespace Strings` 内、`get()` 之后加自检：
@@ -209,7 +210,11 @@ Expected: **编译失败** —— `no member named 'allKeysFilled' in namespace 
     }
 ```
 
-> **注意**：英文串里的 `−85`、`→`、`©` 等符号一律换成 ASCII（`-85`、`->`、`(c)`）——`juce::String(const char*)` 按 ASCII 解码，非 ASCII 字节会乱码；英文串走的是裸 `juce::String` 构造，不是 `S8()`。中文串保留全角符号，因为 `S8()` 走 UTF-8。
+> **注意（规则修正 2026-09-28）**：真正的规则是「**非 ASCII 内容一律走 `S8()`**」，不是「英文串必须纯 ASCII」。
+> 初版计划写成后者，实现者据此把英文串里的 `·` 与全角空格换成了 `-` 和半角空格，结果与已定稿的排版不一致
+> （版本行 `VERSION 0.9.0 · TUJZMIXING` 用 `·`，模块清单却用 `-`）——**这是计划文本的错，不是实现者的错**。
+> 正确做法：英文串里**含** `·`、全角空格等非 ASCII 字符时，与中文一样包 `S8()`；纯 ASCII 的英文串保持裸 `juce::String`。
+> 要避免的是 `juce::String(const char*)` 按 ASCII 逐字节解码非 ASCII 字节（`·` 会显示成 `Â·`），而不是避免出现非 ASCII 字符。
 
 - [ ] **Step 4: 运行测试确认通过**
 
