@@ -182,7 +182,9 @@ MoonVocEditor::MoonVocEditor(MoonVocProcessor& p)
     // 关于浮层 + ⓘ 入口。加入顺序不影响层级：open() 里会 toFront() 盖到所有控件之上
     infoBadge.onClick = [this] { openAbout(); };
     canvas.addAndMakeVisible (infoBadge);
-    canvas.addAndMakeVisible (aboutOverlay);
+    // 浮层必须用 addChildComponent：addAndMakeVisible 会覆盖构造函数里的 setVisible(false)，
+    // 导致浮层开机即显示（isOpen() 就是 isVisible()），四张既有截图会被整片盖住
+    canvas.addChildComponent (aboutOverlay);
 
     startTimerHz(10);
 }

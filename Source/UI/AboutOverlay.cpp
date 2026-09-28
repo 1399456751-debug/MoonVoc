@@ -230,8 +230,12 @@ void AboutOverlay::paint (juce::Graphics& g)
     {
         if (b.gradient)
         {
+            // 渐变跨度取字形实际宽度，不是文字块宽度 —— 块宽 564 而 "MoonVoc" 只占约 73px，
+            // 按块宽铺渐变会让可见部分几乎全是青蓝、珊瑚端完全看不见
+            //（品牌标题同样处理，见 paintCanvas 里 titleBox 的渐变）
+            const int textW = juce::GlyphArrangement::getStringWidthInt (b.font, b.text);
             const juce::ColourGradient grad (Theme::accent, (float) b.bounds.getX(), 0.0f,
-                                             Theme::accent2, (float) b.bounds.getRight(), 0.0f, false);
+                                             Theme::accent2, (float) (b.bounds.getX() + textW), 0.0f, false);
             g.setGradientFill (grad);
             g.setFont (b.font);
             g.drawText (b.text, b.bounds, juce::Justification::centredLeft);
