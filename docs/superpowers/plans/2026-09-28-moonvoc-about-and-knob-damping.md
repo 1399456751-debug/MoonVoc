@@ -304,6 +304,11 @@ static int checkAboutOverlay()
                 for (size_t j = i + 1; j < blocks.size(); ++j)
                     check (! blocks[i].bounds.intersects (blocks[j].bounds),
                            "about text blocks disjoint");
+
+            // 点击归属：卡片内部不关、✕ 关、遮罩关（中英/大字下坐标都会变，四种组合全覆盖）
+            check (! ov.shouldCloseOnClickAt (card.getCentre()), "card interior click keeps overlay open");
+            check (ov.shouldCloseOnClickAt (ov.getCloseBounds().getCentre()), "close button click closes");
+            check (ov.shouldCloseOnClickAt ({ 4, 4 }), "backdrop click closes");
         }
 
     Theme::largeFontMode = false;
@@ -389,8 +394,13 @@ public:
     juce::Rectangle<int> getCardBounds() const noexcept        { return cardBounds; }
     juce::Rectangle<int> getImageBounds() const noexcept       { return imageBounds; }
     juce::Rectangle<int> getRightColumnBounds() const noexcept { return rightColumn; }
+    juce::Rectangle<int> getCloseBounds() const noexcept       { return closeBounds; }
     const std::vector<Block>& getBlocks() const noexcept       { return blocks; }
     float getOpacity() const noexcept                          { return opacity; }
+
+    // 这个位置被点击时该不该关闭：✕ 或卡片外（遮罩）→ true；卡片内部 → false。
+    // 抽成纯函数是为了能直接断言（合成 juce::MouseEvent 需要 Desktop，不值得）
+    bool shouldCloseOnClickAt (juce::Point<int> p) const noexcept;
 
     void paint (juce::Graphics&) override;
     void resized() override;
@@ -688,10 +698,15 @@ void AboutOverlay::mouseMove (const juce::MouseEvent& e)
     if (h != hoveringClose) { hoveringClose = h; repaint(); }
 }
 
+bool AboutOverlay::shouldCloseOnClickAt (juce::Point<int> p) const noexcept
+{
+    return closeBounds.contains (p) || ! cardBounds.contains (p);   // ✕ 或遮罩关闭；卡片内部不关
+}
+
 void AboutOverlay::mouseUp (const juce::MouseEvent& e)
 {
-    if (closeBounds.contains (e.getPosition()) || ! cardBounds.contains (e.getPosition()))
-        close();   // ✕ 或点遮罩都关闭；点卡片内部不关
+    if (shouldCloseOnClickAt (e.getPosition()))
+        close();
 }
 
 bool AboutOverlay::keyPressed (const juce::KeyPress& k)
@@ -804,6 +819,10 @@ Expected: **编译失败** —— `no member named 'openAbout' in 'MoonVocEditor
 ```cpp
     // 关于浮层入口（ⓘ 按钮 / 截图与自检用；animate=false 跳过淡入）
     void openAbout (bool animate = true);
+
+    // 自检/测试读取用（与 dumpLayout 同性质的测试面，不参与生产逻辑）
+    InfoBadge&    getInfoBadge()   noexcept { return infoBadge; }
+    AboutOverlay& getAboutOverlay() noexcept { return aboutOverlay; }
 ```
 
 私有成员区（`juce::Image bgBlurCache;` 附近）加：
@@ -852,9 +871,10 @@ void MoonVocEditor::openAbout (bool animate)
 （e）`dumpLayout()` 末尾（`std::printf("dumpLayout: FAIL=%d\n", fail);` 之前）加：
 
 ```cpp
-    // ⓘ 入口：必须在全局卡内，且不压到右端的指示灯
+    // ⓘ 入口：必须在全局卡内、不压到右端指示灯、且真的接上了开合
     owned (cardGlobal, "infoBadge", infoBadge.getBounds());
     check (! infoBadge.getBounds().intersects (indicatorRect), "infoBadge clear of indicator");
+    check (infoBadge.onClick != nullptr, "info badge wired to about overlay");
 
     // 关于浮层：覆盖画布、卡片不越界、两栏与文字块不重叠
     check (aboutOverlay.getBounds() == juce::Rectangle<int> (0, 0, kDesignW, kDesignH),
@@ -910,50 +930,110 @@ EOF
 
 ---
 
-### Task 5: ⓘ 按钮接上点击（用户入口）
+### Task 5: 开合交互的自动化验证
 
-Task 4 已把 `InfoBadge` 摆好位置并在构造函数里连了 `onClick`；这一步做**真机验证**：确认点击 ⓘ 能打开、三种方式能关闭。
+Task 4 已经把 ⓘ 摆好、把 `onClick` 接上、把浮层接进编辑器。这一步把"点开 → 三种方式关闭"跑成**回归测试**，而不是靠人手点：执行代理点不了 GUI 窗口，人工目视确认统一放在 Task 7 的截图验收。
 
 **Files:**
-- Modify: 无（若 Step 1 验证发现问题，再改 `Source/PluginEditor.cpp`）
+- Modify: `test/UiSnapshot.cpp`（新增交互自检函数并在 `main()` 调用）
 
 **Interfaces:**
-- Consumes: `MoonVocEditor::openAbout()`、`InfoBadge::onClick`（Task 4）
-- Produces: 无新接口
+- Consumes: `MoonVocEditor::getInfoBadge()` / `getAboutOverlay()` / `openAbout()`、`InfoBadge::onClick`、`AboutOverlay::isOpen()/close()/keyPressed()/shouldCloseOnClickAt()/getCardBounds()/getCloseBounds()`
+- Produces: `static int checkAboutInteraction (MoonVocProcessor&)` —— UiSnapshot 内的自检函数，返回 FAIL 计数
 
-- [ ] **Step 1: 在真插件里验证开合并肉眼确认**
+- [ ] **Step 1: 写失败的测试**
 
-关闭宿主 / PluginDoctor（**它们开着会锁住 VST3 DLL，装不进去 —— "UI 没变化"最常见的原因**），构建后安装并打开 Standalone：
+在 `test/UiSnapshot.cpp` 的 `checkAboutOverlay()` 之后加：
 
-```bash
-powershell -NoProfile -Command "& 'E:\VST Effects Plugin Collection\moonvoc\build.bat'" && \
-cd "E:/VST Effects Plugin Collection/moonvoc" && \
-ls -l build/MoonVoc_artefacts/Release/Standalone/MoonVoc.exe
+```cpp
+// 开合交互自检：走的是真实点击的同一条通路（infoBadge.onClick、AboutOverlay 的
+// shouldCloseOnClickAt 与 keyPressed），不合成 juce::MouseEvent（那需要 Desktop，不值当）
+static int checkAboutInteraction (MoonVocProcessor& processor)
+{
+    int fail = 0;
+    auto check = [&] (bool ok, const char* what)
+    {
+        if (! ok) { std::printf ("FAIL: %s\n", what); ++fail; }
+    };
+
+    std::unique_ptr<juce::AudioProcessorEditor> editor (processor.createEditor());
+    editor->setSize (MoonVocEditor::kDesignW, MoonVocEditor::kDesignH);
+    editor->resized();
+
+    auto* me = dynamic_cast<MoonVocEditor*> (editor.get());
+    if (me == nullptr) { std::printf ("FAIL: editor is not MoonVocEditor\n"); return 1; }
+
+    auto& badge   = me->getInfoBadge();
+    auto& overlay = me->getAboutOverlay();
+
+    check (! overlay.isOpen(), "about overlay starts closed");
+
+    // 点 ⓘ（animate=true 会起淡入定时器；下面 Esc 关闭会 stopTimer，不留悬挂定时器）
+    check (badge.onClick != nullptr, "info badge has click handler");
+    badge.onClick();
+    check (overlay.isOpen(), "info badge click opens overlay");
+
+    check (! overlay.shouldCloseOnClickAt (overlay.getCardBounds().getCentre()),
+           "click inside card does not close");
+
+    check (overlay.keyPressed (juce::KeyPress (juce::KeyPress::escapeKey)), "esc key is handled");
+    check (! overlay.isOpen(), "esc closes overlay");
+
+    me->openAbout (false);
+    check (overlay.isOpen(), "openAbout(false) opens overlay");
+    check (overlay.shouldCloseOnClickAt ({ 4, 4 }), "backdrop click closes");
+    overlay.close();
+    check (! overlay.isOpen(), "close() hides overlay");
+
+    me->openAbout (false);
+    check (overlay.shouldCloseOnClickAt (overlay.getCloseBounds().getCentre()),
+           "close button click closes");
+    overlay.close();
+    check (! overlay.isOpen(), "overlay closed after close button");
+
+    std::printf ("checkAboutInteraction: FAIL=%d\n", fail);
+    return fail;
+}
 ```
 
-打开 `build/MoonVoc_artefacts/Release/Standalone/MoonVoc.exe`，逐条确认：
-
-1. 全局卡右上角（指示灯正上方）有 ⓘ，鼠标悬停时圆内出现淡色底
-2. 点 ⓘ → 浮层淡入（约 0.15 秒渐显，不是"啪"地跳出）
-3. 点遮罩空白处 → 关闭
-4. 再打开，点 ✕ → 关闭
-5. 再打开，按 Esc → 关闭
-6. 打开状态下拖动旋钮**拖不动**（浮层挡住了）
-
-- [ ] **Step 2: 若 ⓘ 位置或手感不对，微调后重跑断言**
-
-`layoutCanvas()` 里的 `infoBadge.setBounds(...)` 是唯一的位置来源；改完必须重跑：
+- [ ] **Step 2: 运行确认失败**
 
 ```bash
-cd "E:/VST Effects Plugin Collection/moonvoc" && ./build/MoonVocUiSnapshot.exe 2>&1 | grep -E "dumpLayout: FAIL|infoBadge"
+powershell -NoProfile -Command "& 'E:\VST Effects Plugin Collection\moonvoc\build.bat'" 2>&1 | tail -20
 ```
 
-Expected: `dumpLayout: FAIL=0`（`infoBadge clear of indicator` 不能红）
+Expected: **编译失败** —— `no member named 'getInfoBadge'` / `no member named 'shouldCloseOnClickAt'`（若 Task 3/4 未按计划提供这些接口）
 
-- [ ] **Step 3: Commit（仅在 Step 2 有改动时）**
+- [ ] **Step 3: 在 `main()` 里接上自检**
+
+在 `processor.prepareToPlay (48000.0, 512);` 之后加：
+
+```cpp
+    if (checkAboutInteraction (processor) != 0)
+    {
+        std::printf ("about interaction check failed\n");
+        return 1;
+    }
+```
+
+- [ ] **Step 4: 运行确认通过**
 
 ```bash
-cd "E:/VST Effects Plugin Collection/moonvoc" && git add Source/PluginEditor.cpp && git commit -m "ui: 微调 ⓘ 入口位置"
+powershell -NoProfile -Command "& 'E:\VST Effects Plugin Collection\moonvoc\build.bat'" 2>&1 | tail -5 && cd "E:/VST Effects Plugin Collection/moonvoc" && ./build/MoonVocUiSnapshot.exe 2>&1 | grep -E "checkAbout|dumpLayout: FAIL"
+```
+
+Expected: `checkAboutInteraction: FAIL=0`、`checkAboutOverlay: FAIL=0`、4 次 `dumpLayout: FAIL=0`；EXIT=0
+
+- [ ] **Step 5: Commit**
+
+```bash
+cd "E:/VST Effects Plugin Collection/moonvoc" && git add test/UiSnapshot.cpp && git commit -F - <<'EOF'
+test: 关于浮层开合交互自动化自检
+
+- checkAboutInteraction：初始关闭 → 点 ⓘ 打开 → 点卡片内部不关 → Esc 关
+  → 点遮罩关 → 点 ✕ 关，全程断言可见性
+- 不合成 MouseEvent（需要 Desktop），改走 shouldCloseOnClickAt 纯函数与 keyPressed
+EOF
 ```
 
 ---
@@ -1122,7 +1202,8 @@ cp ui_snapshot_about.png ui_snapshot_about_en.png ui_snapshot_about_large.png \
 - **spec §1.1~§1.4（浮层形态/结构/开合/版式）** → Task 3、4
 - **spec §1.5（文案全表）** → Task 2
 - **spec §1.6（素材与构建）** → Task 1
-- **spec §2（ⓘ 按钮）** → Task 3（组件）、Task 4（摆位与断言）、Task 5（真机验证）
+- **spec §2（ⓘ 按钮）** → Task 3（组件）、Task 4（摆位与断言）、Task 5（开合交互自动化验证；
+  原计划的人工点击验证改成回归测试 —— 执行代理点不了 GUI，人工目视并入 Task 7 的截图验收）
 - **spec §3（旋钮阻尼）** → Task 6
 - **spec §4（测试与验证）** → Task 2/3/4/6 的断言 + Task 7 全量回归
 - **spec §5（明确不做）** → 全计划无淡出、无独立窗口、无插画裁切、无版本号变更、无打包
