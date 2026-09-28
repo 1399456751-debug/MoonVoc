@@ -911,7 +911,7 @@ powershell -NoProfile -Command "& 'E:\VST Effects Plugin Collection\moonvoc\buil
 
 Expected: **7 次** `dumpLayout: FAIL=0`（4 张旧截图 + 3 张关于，每个状态各调一次）、`checkAboutOverlay: FAIL=0`、7 张 `snapshot written`
 
-- [x] **Step 6: 人工看图确认（关键）**
+- [x] **Step 6: 人工看图确认（关键）** —— 由执行代理用 PIL/numpy 逐像素核验（**非人工**）；人工目视归 Task 7 Step 5
 
 打开 `ui_snapshot_about.png`、`ui_snapshot_about_en.png`、`ui_snapshot_about_large.png`，确认：
 
@@ -1100,7 +1100,7 @@ powershell -NoProfile -Command "& 'E:\VST Effects Plugin Collection\moonvoc\buil
 
 Expected: 7 次 `dumpLayout: FAIL=0`，无 `knob drag` FAIL 行
 
-- [x] **Step 5: 手感真机确认（人工步骤，执行代理做不了 —— 归到 Task 7 的交付验收）**
+- [ ] **Step 5: 手感真机确认（人工步骤，执行代理做不了 —— 归到 Task 7 的交付验收）** —— 待人工验收，未执行（见 `task-6-report.md`「关注点」）
 
 打开 Standalone，拖动 Compression / Edge / Reverb 三个 hero 旋钮与任意标准旋钮：同样一段鼠标位移，数值变化约为改前的一半；微调时更容易停在想要的数字上。
 
@@ -1144,27 +1144,9 @@ Expected: 只有 `dumpLayout: FAIL=0`（**7 次**）、`checkAboutOverlay: FAIL=
 
 - [x] **Step 2: 更新 `docs/HANDOFF.md`**
 
-在 §6「已知问题 / 待办」的最新小节（v0.9.0 那条之后）插入新小节：
+在 §6「已知问题 / 待办」的最新小节（v0.9.0 那条之后）插入新小节。
 
-```markdown
-**2026-09-28 关于界面 + 旋钮阻尼（v0.9.0 之上，未打包）**：
-- [x] **关于浮层**：`Source/UI/AboutOverlay.h/.cpp` —— 插件内浮层（非独立窗口，宿主里不会被挤掉），
-      作为 Canvas 子组件覆盖 1496×672，自动跟随 100~300% 缩放与大字模式
-- [x] **版式（用户选定 B 双栏）**：卡片 1080 宽，左栏 440 整幅插画（等比、垂直居中、不裁切），
-      右栏 564 文字（标题渐变 / 版本 / 介绍 / SIGNAL CHAIN / TRANSPARENCY / 联系版权）
-- [x] **卡片高度按文字实测自适应**（TextLayout 量高，钳制 360~656），中英 + 大字都不会溢出
-- [x] **入口**：全局卡右上角 ⓘ 徽章（1438,30,26,26），刻意避开右端指示灯（1412,66,40,40）
-- [x] **关闭**：点遮罩 / ✕ / Esc；**淡入 150ms**（`open(false)` 供截图跳过动画）
-- [x] **插画素材**：`assets/artwork.png`（与 TMIXTOOL 同一张，TUJZMIXING 自有）嵌入二进制数据；
-      `juce_add_binary_data` target 更名 `MoonVocFonts` → `MoonVocAssets`
-- [x] **旋钮阻尼**：`setupSlider` 统一 `setMouseDragSensitivity(500)`（默认 250 太滑）
-- [x] **JUCE 9 新坑**：① `AttributedString` 用 `append(text, font, colour)`，没有 `withFont`；
-      ② `setLineSpacing` 是**额外**行距不是倍数（倍数要换算 `font.getHeight() * (m-1)`）；
-      ③ 英文串走裸 `juce::String`（ASCII 解码），`−85`/`→`/`©` 这类符号必须换 ASCII
-- [x] **验证**：HeadlessTest EXIT=0 + allKeysFilled OK；UiSnapshot `dumpLayout: FAIL=0`（4 态）
-      与 `checkAboutOverlay: FAIL=0`（中英 × 标准/大字）+ 3 张关于截图人工确认
-- [ ] 待打包发布（等用户指示）
-```
+**细则以 `docs/HANDOFF.md` §6 为准**（本计划不再内嵌 HANDOFF 副本 —— 两处同述同一批事实必然漂移；早期草稿内嵌的那份已过时，勿再引用）。
 
 - [x] **Step 3: 把 spec 状态行改成已实现**
 
