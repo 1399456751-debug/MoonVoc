@@ -671,8 +671,12 @@ void AboutOverlay::paint (juce::Graphics& g)
     {
         if (b.gradient)
         {
+            // 渐变跨度取字形实际宽度，不是文字块宽度 —— 块宽 564 而 "MoonVoc" 只占约 73px，
+            // 按块宽铺渐变会让可见部分几乎全是青蓝、珊瑚端完全看不见
+            //（品牌标题同样处理，见 paintCanvas 里 titleBox 的渐变）
+            const int textW = juce::GlyphArrangement::getStringWidthInt (b.font, b.text);
             const juce::ColourGradient grad (Theme::accent, (float) b.bounds.getX(), 0.0f,
-                                             Theme::accent2, (float) b.bounds.getRight(), 0.0f, false);
+                                             Theme::accent2, (float) (b.bounds.getX() + textW), 0.0f, false);
             g.setGradientFill (grad);
             g.setFont (b.font);
             g.drawText (b.text, b.bounds, juce::Justification::centredLeft);
@@ -846,7 +850,9 @@ Expected: **编译失败** —— `no member named 'openAbout' in 'MoonVocEditor
     // 关于浮层 + ⓘ 入口。加入顺序不影响层级：open() 里会 toFront() 盖到所有控件之上
     infoBadge.onClick = [this] { openAbout(); };
     canvas.addAndMakeVisible (infoBadge);
-    canvas.addAndMakeVisible (aboutOverlay);
+    // 浮层必须用 addChildComponent：addAndMakeVisible 会覆盖构造函数里的 setVisible(false)，
+    // 导致浮层开机即显示（isOpen() 就是 isVisible()），四张既有截图会被整片盖住
+    canvas.addChildComponent (aboutOverlay);
 ```
 
 （b）`applyLanguage()` 末尾（`canvas.repaint();` 之前）加：
