@@ -68,6 +68,55 @@ static int checkAboutOverlay()
     return fail;
 }
 
+// 开合交互自检：走的是真实点击的同一条通路（infoBadge.onClick、AboutOverlay 的
+// shouldCloseOnClickAt 与 keyPressed），不合成 juce::MouseEvent（那需要 Desktop，不值当）
+static int checkAboutInteraction (MoonVocProcessor& processor)
+{
+    int fail = 0;
+    auto check = [&] (bool ok, const char* what)
+    {
+        if (! ok) { std::printf ("FAIL: %s\n", what); ++fail; }
+    };
+
+    std::unique_ptr<juce::AudioProcessorEditor> editor (processor.createEditor());
+    editor->setSize (MoonVocEditor::kDesignW, MoonVocEditor::kDesignH);
+    editor->resized();
+
+    auto* me = dynamic_cast<MoonVocEditor*> (editor.get());
+    if (me == nullptr) { std::printf ("FAIL: editor is not MoonVocEditor\n"); return 1; }
+
+    auto& badge   = me->getInfoBadge();
+    auto& overlay = me->getAboutOverlay();
+
+    check (! overlay.isOpen(), "about overlay starts closed");
+
+    // 点 ⓘ（animate=true 会起淡入定时器；下面 Esc 关闭会 stopTimer，不留悬挂定时器）
+    check (badge.onClick != nullptr, "info badge has click handler");
+    badge.onClick();
+    check (overlay.isOpen(), "info badge click opens overlay");
+
+    check (! overlay.shouldCloseOnClickAt (overlay.getCardBounds().getCentre()),
+           "click inside card does not close");
+
+    check (overlay.keyPressed (juce::KeyPress (juce::KeyPress::escapeKey)), "esc key is handled");
+    check (! overlay.isOpen(), "esc closes overlay");
+
+    me->openAbout (false);
+    check (overlay.isOpen(), "openAbout(false) opens overlay");
+    check (overlay.shouldCloseOnClickAt ({ 4, 4 }), "backdrop click closes");
+    overlay.close();
+    check (! overlay.isOpen(), "close() hides overlay");
+
+    me->openAbout (false);
+    check (overlay.shouldCloseOnClickAt (overlay.getCloseBounds().getCentre()),
+           "close button click closes");
+    overlay.close();
+    check (! overlay.isOpen(), "overlay closed after close button");
+
+    std::printf ("checkAboutInteraction: FAIL=%d\n", fail);
+    return fail;
+}
+
 int main()
 {
     juce::ScopedJuceInitialiser_GUI guiInit;
@@ -80,6 +129,12 @@ int main()
 
     MoonVocProcessor processor;
     processor.prepareToPlay(48000.0, 512);
+
+    if (checkAboutInteraction (processor) != 0)
+    {
+        std::printf ("about interaction check failed\n");
+        return 1;
+    }
 
     auto setP = [&](const char* id, float v)
     {
