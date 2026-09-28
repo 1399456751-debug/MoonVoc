@@ -99,7 +99,8 @@ moonvoc/
       作为 Canvas 子组件覆盖 1496×672，自动跟随 100~300% 缩放与大字模式
 - [x] **版式（用户选定 B 双栏）**：卡片 1080 宽，左栏 440 整幅插画（等比、垂直居中、不裁切），
       右栏 564 文字（标题渐变 / 版本 / 介绍 / SIGNAL CHAIN / TRANSPARENCY / 联系版权）
-- [x] **卡片高度按文字实测自适应**（TextLayout 量高，钳制 360~656），中英 + 大字都不会溢出
+- [x] **卡片高度按文字实测自适应**（TextLayout 量高，钳制 360~656）；右栏文字另有 `reduceClipRegion(rightColumn)`
+      兜底，内容真超限时被**裁掉**而非画到卡片外的遮罩上（有断言 `about right column text fits` 守着）
 - [x] **入口**：全局卡右上角 ⓘ 徽章（1438,30,26,26），刻意避开右端指示灯（1412,66,40,40）
 - [x] **关闭**：点遮罩 / ✕ / Esc；**淡入 150ms**（`open(false)` 供截图跳过动画）
 - [x] **插画素材**：`assets/artwork.png`（与 TMIXTOOL 同一张，TUJZMIXING 自有）嵌入二进制数据；
@@ -107,11 +108,11 @@ moonvoc/
 - [x] **旋钮阻尼**：`setupSlider` 统一 `setMouseDragSensitivity(500)`（默认 250 太滑），15 个旋钮全覆盖
 - [x] **JUCE 9 新坑**：① `AttributedString` 用 `append(text, font, colour)`，没有 `withFont`；
       ② `setLineSpacing` 是**额外**行距不是倍数（倍数要换算 `font.getHeight() * (m-1)`）；
-      ③ 规则是「**非 ASCII 内容一律走 `S8()`**」—— 中文串，以及含 `·`／全角空格的英文串都得包 `S8()`，
-      **纯 ASCII** 的英文串才用裸 `juce::String`。要避免的是 `juce::String(const char*)` 按 ASCII
-      逐字节解码（`·` 显示成 `Â·`），**不是**「避免出现非 ASCII 字符」。所以英文串里只要含
-      `·`／`→`／`©`／`−`（U+2212）／破折号 `—` 或全角空格，就跟中文串一样包 `S8()`，
-      只有纯 ASCII 的英文串才保持裸 `juce::String` —— 没有、也不该把英文里这些字形改写成 ASCII 替身
+      ③ 规则是「**非 ASCII 内容一律走 `S8()`**」—— 中文串，以及含 `·`／`→`／`©`／`−`（U+2212）／
+      破折号 `—`／全角空格的英文串，全都跟中文串一样包 `S8()`；只有纯 ASCII 的英文串才用裸 `juce::String`。
+      要避免的是 `juce::String(const char*)` 按 ASCII 逐字节解码（`·` 显示成 `Â·`），
+      **不是**「避免出现非 ASCII 字符」，更**不该**把英文里这些字形改写成 ASCII 替身
+      （曾据此错改过一版 `->`／`(c)`／`-85`，已改回）
 - [x] **验证**：HeadlessTest EXIT=0（FAIL 计数 0、首行 `strings table filled: OK`）；
       UiSnapshot `dumpLayout: FAIL=0` **×7**（4 张既有截图 + 3 张关于，每状态各调一次）+
       `checkAboutOverlay: FAIL=0`（中英 × 标准/大字 4 组合）+ `checkAboutInteraction: FAIL=0`（开合回归），
@@ -123,6 +124,23 @@ moonvoc/
       3 张（standard / en / zoom200）出现 1~2 像素、≤2/255 的弧线抗锯齿级抖动。已实测「只建/毁编辑器」
       即可复现，且参数取值、控件几何、Theme 字体标志两次运行完全一致、复位标志也消不掉 —— **根因未查明**。
       放在最后，参考 PNG 才逐字节稳定
+- [ ] **本轮的遗留待办**（终审裁定「可留待后续」，下次动 UI 时一起做）：
+      · `InfoBadge::mouseUp` 未判 `mouseWasClicked()` —— 右键、或按下后拖出再松开也会打开浮层（改 1 行即可）
+      · 右栏只做了「超出则裁剪」；spec §1.4 还有前半句「先按比例压缩块间距（最小 12）」**未实现**
+        （当前最坏组合余量 58px；真越界会先让 `about right column text fits` 断言变红，不会静默）
+      · 两条断言近乎恒真（`columns do not overlap`／`text blocks do not overlap`，几何上不可能违反）；
+        而「卡片居中」「插画垂直居中」两项设计契约**没有**断言覆盖
+      · 15 个旋钮共用同一条失败信息，单个旋钮退化时看不出是哪一个
+      · `kCount` 哨兵仅靠注释守，可补 `static_assert`；`Strings::get` 故意不写 `default:`，**别加**
+      · `CMakeLists.txt` 里三个测试 target 的版本号硬编码三份，与 `project(... VERSION ...)` 平行 ——
+        发布会话漏改会让关于界面显示旧版本且没有测试会红（改 `${PROJECT_VERSION}` 即可）
+      · `checkAboutInteraction` 现在只在「中文+大字」态跑，标准字号的开合路径不再由它覆盖
+      · 本文件 §9 测试基线仍停在 v0.8.0
+- [ ] **建议的工程改进**（终审提出，非必须）：
+      · 把「参考 PNG 逐字节稳定」自动化：加 `test/baseline-md5.txt` + 让工具自比对，
+        现在这个保证只活在任务报告里，是口头约定而非回归信号
+      · 若要根治下面那条未查明的像素抖动：首选「截图与自检拆成两个入口」（默认只出图、自检走独立入口），
+        顺序约束就从约定变成物理不可能
 - [ ] 待打包发布（等用户指示）
 
 **v0.8.0 已完成（2026-09-27）**：
