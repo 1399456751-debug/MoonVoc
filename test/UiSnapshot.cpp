@@ -113,6 +113,12 @@ static int checkAboutInteraction (MoonVocProcessor& processor)
     overlay.close();
     check (! overlay.isOpen(), "overlay closed after close button");
 
+    // 自检按参数默认值建编辑器（uiLanguage 默认 English），会改掉全局字体标志；走之前复位，
+    // 与 checkAboutOverlay() 结尾的收尾一致。注意：仅复位标志不足以消除对参考截图的扰动
+    // （见 main() 末尾对本函数调用位置的说明），这里保留是为了不把脏状态留给后续代码。
+    Theme::useCjkFont    = true;
+    Theme::largeFontMode = false;
+
     std::printf ("checkAboutInteraction: FAIL=%d\n", fail);
     return fail;
 }
@@ -129,12 +135,6 @@ int main()
 
     MoonVocProcessor processor;
     processor.prepareToPlay(48000.0, 512);
-
-    if (checkAboutInteraction (processor) != 0)
-    {
-        std::printf ("about interaction check failed\n");
-        return 1;
-    }
 
     auto setP = [&](const char* id, float v)
     {
@@ -220,6 +220,16 @@ int main()
     shotAbout ("ui_snapshot_about.png",       true,  false);
     shotAbout ("ui_snapshot_about_en.png",    false, false);
     shotAbout ("ui_snapshot_about_large.png", true,  true);
+
+    // 开合自检必须放在所有截图之后：在截图之前多建一次编辑器，会让 7 张参考图里的 3 张
+    // （standard / en / zoom200）出现 1~2 像素、1~2/255 的弧线抗锯齿级抖动 —— 实测只建/毁
+    // 编辑器即可复现，且参数取值、控件几何、Theme 字体标志在两次运行里完全一致，复位标志
+    // 也消不掉。放在最后，参考 PNG 才逐字节稳定（append 在此不影响任何已写出的图）。
+    if (checkAboutInteraction (processor) != 0)
+    {
+        std::printf ("about interaction check failed\n");
+        return 1;
+    }
 
     return 0;
 }
