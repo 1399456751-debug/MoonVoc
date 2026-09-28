@@ -3,6 +3,7 @@
 #include <JuceHeader.h>
 #include <cstdio>
 #include "../Source/PluginProcessor.h"
+#include "../Source/UI/MoonVocStrings.h"
 
 #define TRACE(...) do { std::printf(__VA_ARGS__); std::fflush(stdout); } while (0)
 
@@ -98,6 +99,13 @@ int main()
 
     juce::MidiBuffer midi;
     juce::Random rng;
+
+    // 文本表自检：新增 key 必须中英双份，漏一个就红
+    {
+        const bool ok = Strings::allKeysFilled();
+        TRACE("strings table filled: %s\n", ok ? "OK" : "FAIL");
+        if (! ok) return 1;
+    }
 
     // 各种块大小
     const int blockSizes[] { 64, 128, 512, 1024 };
