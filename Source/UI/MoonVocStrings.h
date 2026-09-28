@@ -69,17 +69,17 @@ namespace Strings
             case kAboutChainTag:return zh ? S8("信号链") : S8("SIGNAL CHAIN");
             case kAboutModules:
                 return zh ? S8("四段智能 EQ　Thick · De-Box · Clarity · Air\n三级压缩　FET · 光电 · 并行\n齿音控制　→　双槽染色　→　瞬态整形　→　混响")
-                          : juce::String("Four-band intelligent EQ Thick - De-Box - Clarity - Air\nThree-stage compression FET - Optical - Parallel\nDe-Ess -> Dual-stage saturation -> Transient -> Reverb");
+                          : S8("Four-band intelligent EQ　Thick · De-Box · Clarity · Air\nThree-stage compression　FET · Optical · Parallel\nDe-Ess -> Dual-stage saturation -> Transient -> Reverb");
             case kAboutNoteTag: return zh ? S8("透明") : S8("TRANSPARENCY");
             case kAboutNote:
                 return zh ? S8("所有算法以透明为基准：参数归零时，信号逐样本还原；超采样链采用线性相位 FIR 半带滤波，4x 下残余失真低于 −85 dB。")
                           : juce::String("Every algorithm is built around transparency: with all parameters at zero the signal is returned sample for sample, and the oversampling stage uses linear-phase FIR half-band filters, keeping residual distortion below -85 dB at 4x.");
             case kAboutContact:
                 return zh ? S8("反馈与建议　1399456751@qq.com　·　github.com/1399456751-debug")
-                          : juce::String("Feedback 1399456751@qq.com - github.com/1399456751-debug");
+                          : S8("Feedback　1399456751@qq.com　·　github.com/1399456751-debug");
             case kAboutCredits:
                 return zh ? S8("© 2026 TUJZMIXING　·　基于 JUCE 构建　·　去齿音改编自 Airwindows DeBess（MIT，© Chris Johnson）")
-                          : juce::String("(c) 2026 TUJZMIXING - Built on JUCE - De-Esser adapted from Airwindows DeBess (MIT, (c) Chris Johnson)");
+                          : S8("(c) 2026 TUJZMIXING　·　Built on JUCE　·　De-Esser adapted from Airwindows DeBess (MIT, (c) Chris Johnson)");
         }
         return {};
     }
