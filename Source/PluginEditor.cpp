@@ -201,6 +201,9 @@ void MoonVocEditor::setupSlider(juce::Slider& s, juce::Label& l, Strings::Key ke
     s.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 72, kTbH);
     s.setTextValueSuffix("");
     s.setDoubleClickReturnValue(true, s.getValue());
+    // 拖动阻尼：默认 250px 拖满整个取值范围，手感过滑；500 = 拖满需 500px。
+    // 注意 juce::Slider 的滚轮步进用同一常量换算，滚轮也会同比变稳（预期行为）
+    s.setMouseDragSensitivity (500);
     s.setColour(juce::Slider::textBoxTextColourId, Theme::textMain);
     s.setColour(juce::Slider::textBoxBackgroundColourId, juce::Colours::transparentBlack);
     s.setColour(juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
@@ -584,6 +587,14 @@ void MoonVocEditor::dumpLayout() const
             for (size_t j = i + 1; j < bl.size(); ++j)
                 check (! bl[i].bounds.intersects (bl[j].bounds), "about text blocks do not overlap");
     }
+
+    // 旋钮阻尼：全部 15 个旋钮统一 500（默认 250 太滑）
+    for (auto* s : { &inputGainSlider, &headroomSlider, &outputGainSlider,
+                     &boostSlider, &deboxSlider, &claritySlider, &airSlider,
+                     &compAmountSlider, &compMakeupSlider,
+                     &dsAmountSlider, &dsFocusSlider,
+                     &reverbSlider, &satAmountASlider, &satAmountBSlider, &edgeSlider })
+        check (s->getMouseDragSensitivity() == 500, "knob drag sensitivity == 500");
 
     std::printf("dumpLayout: FAIL=%d\n", fail);
 }
