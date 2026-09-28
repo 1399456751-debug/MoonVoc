@@ -403,6 +403,10 @@ private:
     void rebuildBlocks();     // 生成 8 个文字块（内容 + 排版参数）
     void recomputeMetrics();  // 量高 → 卡片/两栏/各块矩形（不依赖 Graphics）
 
+    // 块 → 排版串：量高（recomputeMetrics）与绘制（paint）共用同一份排版参数，
+    // 两处各写一遍迟早会漂移
+    static juce::AttributedString attributeOf (const Block&);
+
     bool  zh = true;
     float opacity = 1.0f;
     bool  hoveringClose = false;
@@ -467,6 +471,15 @@ void InfoBadge::mouseExit  (const juce::MouseEvent&) { hover = false; repaint();
 void InfoBadge::mouseUp    (const juce::MouseEvent&) { if (onClick) onClick(); }
 
 // --------------------------------------------------------------- AboutOverlay
+
+juce::AttributedString AboutOverlay::attributeOf (const Block& b)
+{
+    juce::AttributedString as;
+    as.setWordWrap (juce::AttributedString::byWord);   // JUCE 9 走 Unicode 换行规则，中文可断
+    as.setLineSpacing (extraLineSpacing (b.font, b.lineSpacingMultiple));
+    as.append (b.text, b.font, b.colour);
+    return as;
+}
 
 AboutOverlay::AboutOverlay()
 {
@@ -556,13 +569,8 @@ void AboutOverlay::rebuildBlocks()
         }
         else
         {
-            juce::AttributedString as;
-            as.setWordWrap (juce::AttributedString::byWord);   // JUCE 9 用 Unicode 换行规则，中文可断
-            as.setLineSpacing (extraLineSpacing (b.font, b.lineSpacingMultiple));
-            as.append (b.text, b.font, b.colour);
-
             juce::TextLayout layout;
-            layout.createLayout (as, (float) textW);
+            layout.createLayout (attributeOf (b), (float) textW);
             h = (int) std::ceil (layout.getHeight());
         }
 
@@ -654,13 +662,8 @@ void AboutOverlay::paint (juce::Graphics& g)
         }
         else
         {
-            juce::AttributedString as;
-            as.setWordWrap (juce::AttributedString::byWord);
-            as.setLineSpacing (extraLineSpacing (b.font, b.lineSpacingMultiple));
-            as.append (b.text, b.font, b.colour);
-
             juce::TextLayout layout;
-            layout.createLayout (as, (float) b.bounds.getWidth());
+            layout.createLayout (attributeOf (b), (float) b.bounds.getWidth());
             layout.draw (g, b.bounds.toFloat());
         }
     }
