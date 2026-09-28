@@ -18,6 +18,8 @@
   - `AttributedString::setLineSpacing()` 是**额外行距（加在行高之上的绝对量）**，不是倍数 —— 倍数要换算成 `font.getHeight() * (multiple - 1)`。
   - `juce::TextLayout`：`createLayout (const AttributedString&, float maxWidth)` + `getHeight()` + `draw (Graphics&, Rectangle<float>)`。
   - `juce::Font` 只有单参构造（用 `.withHeight`）；`juce::Colour` 非 constexpr（用 `const`）。
+  - **`juce::Graphics::drawLine (Point, Point, float)` 不存在**（JUCE 9 只留 `drawLine (Line<float>, float)`）——
+    Task 3 画 ✕ 时踩到（C2661），正确写法 `g.drawLine (juce::Line<float> (a, b), 1.4f)`。
   - `juce::String (const char*)` 按 **ASCII** 解码 —— 中文字面量必须走 `ParamIDs.h` 的 `S8()`。
 - **非 ASCII 内容一律走 `S8()`** —— 中文，以及含 `·`、全角空格等非 ASCII 字符的英文串；纯 ASCII 的英文串用裸 `juce::String`。
   要避免的是「非 ASCII 字节被当 ASCII 解码」（`·` 变 `Â·`），不是「出现非 ASCII 字符」（Task 2 曾误读此规则，见 Task 2 Step 3 的注意）。新增 `Strings::Key` 必须中英双份，缺一不可（Task 2 有自检）。
