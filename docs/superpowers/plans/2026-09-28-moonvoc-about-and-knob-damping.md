@@ -1140,7 +1140,7 @@ Expected: `EXIT=0`，`grep -c FAIL` 输出 `0`
 cd "E:/VST Effects Plugin Collection/moonvoc" && ./build/MoonVocUiSnapshot.exe 2>&1 | grep -E "FAIL|checkAboutOverlay" | head -20
 ```
 
-Expected: 只有 `dumpLayout: FAIL=0`（4 次）与 `checkAboutOverlay: FAIL=0`，没有任何 `FAIL:` 行
+Expected: 只有 `dumpLayout: FAIL=0`（**7 次**）、`checkAboutOverlay: FAIL=0`、`checkAboutInteraction: FAIL=0`，没有任何 `FAIL:` 行
 
 - [ ] **Step 2: 更新 `docs/HANDOFF.md`**
 
