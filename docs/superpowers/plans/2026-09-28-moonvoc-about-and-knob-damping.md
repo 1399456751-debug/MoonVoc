@@ -41,7 +41,7 @@
 - Consumes: 无
 - Produces: 生成头 `BinaryData.h` 中的 `BinaryData::artwork_png` / `BinaryData::artwork_pngSize`（CMake target 名 `MoonVocAssets`，供 Task 3 的 `target_link_libraries` 使用）
 
-- [ ] **Step 1: 复制素材进项目**
+- [x] **Step 1: 复制素材进项目**
 
 ```bash
 cp "E:/VST Effects Plugin Collection/TMIXTOOL/src/gui/assets/artwork.png" \
@@ -51,7 +51,7 @@ ls -l "E:/VST Effects Plugin Collection/moonvoc/assets/"
 
 Expected: `artwork.png` 约 700KB（1400×1116 线稿）
 
-- [ ] **Step 2: 改 CMakeLists（二进制数据块 + 改名）**
+- [x] **Step 2: 改 CMakeLists（二进制数据块 + 改名）**
 
 把第 33-38 行：
 
@@ -76,7 +76,7 @@ juce_add_binary_data(MoonVocAssets
 )
 ```
 
-- [ ] **Step 3: 把 4 处 `MoonVocFonts` 链接改成 `MoonVocAssets`**
+- [x] **Step 3: 把 4 处 `MoonVocFonts` 链接改成 `MoonVocAssets`**
 
 ```bash
 cd "E:/VST Effects Plugin Collection/moonvoc" && grep -n "MoonVocFonts" CMakeLists.txt
@@ -90,7 +90,7 @@ Expected: 4 行命中。逐一改成 `MoonVocAssets`（第 52 行的 `MoonVoc`�
 cd "E:/VST Effects Plugin Collection/moonvoc" && grep -n "MoonVocFonts" CMakeLists.txt
 ```
 
-- [ ] **Step 4: 重新配置并构建**
+- [x] **Step 4: 重新配置并构建**
 
 ```bash
 powershell -NoProfile -Command "& 'E:\VST Effects Plugin Collection\moonvoc\build.bat'"
@@ -98,7 +98,7 @@ powershell -NoProfile -Command "& 'E:\VST Effects Plugin Collection\moonvoc\buil
 
 Expected: 构建成功（会有一轮较长的 reconfigure，因为 target 改名了）
 
-- [ ] **Step 5: 验证 BinaryData 里出现了插画符号**
+- [x] **Step 5: 验证 BinaryData 里出现了插画符号**
 
 ```bash
 cd "E:/VST Effects Plugin Collection/moonvoc" && grep -rn "artwork_png" build/ --include="BinaryData.h" | head -3
@@ -106,7 +106,7 @@ cd "E:/VST Effects Plugin Collection/moonvoc" && grep -rn "artwork_png" build/ -
 
 Expected: 打印出 `artwork_png` 与 `artwork_pngSize` 的声明
 
-- [ ] **Step 6: 回归测试仍全绿**
+- [x] **Step 6: 回归测试仍全绿**
 
 ```bash
 cd "E:/VST Effects Plugin Collection/moonvoc" && ./build/MoonVocHeadlessTest.exe | tail -5; echo "EXIT=$?"
@@ -114,7 +114,7 @@ cd "E:/VST Effects Plugin Collection/moonvoc" && ./build/MoonVocHeadlessTest.exe
 
 Expected: `EXIT=0`，无 `FAIL`
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 cd "E:/VST Effects Plugin Collection/moonvoc" && git add assets/artwork.png CMakeLists.txt && git commit -F - <<'EOF'
@@ -137,7 +137,7 @@ EOF
 - Consumes: 无
 - Produces: `Strings::Key` 新增 `kVersion, kAboutBlurb, kAboutChainTag, kAboutModules, kAboutNoteTag, kAboutNote, kAboutContact, kAboutCredits`，以及枚举末尾的哨兵 `kCount` 与自检函数 `bool Strings::allKeysFilled()`（中英任一语言缺项返回 false）
 
-- [ ] **Step 1: 写失败的测试**
+- [x] **Step 1: 写失败的测试**
 
 在 `test/HeadlessTest.cpp` 顶部 include 区加：
 
@@ -156,7 +156,7 @@ EOF
     }
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 ```bash
 powershell -NoProfile -Command "& 'E:\VST Effects Plugin Collection\moonvoc\build.bat'" 2>&1 | tail -20
@@ -164,7 +164,7 @@ powershell -NoProfile -Command "& 'E:\VST Effects Plugin Collection\moonvoc\buil
 
 Expected: **编译失败** —— `no member named 'allKeysFilled' in namespace 'Strings'`
 
-- [ ] **Step 3: 实现（改 `Source/UI/MoonVocStrings.h`）**
+- [x] **Step 3: 实现（改 `Source/UI/MoonVocStrings.h`）**
 
 枚举（第 9-19 行）在 `kScale, kLevel` 之后补新 key 与哨兵：
 
@@ -218,7 +218,7 @@ Expected: **编译失败** —— `no member named 'allKeysFilled' in namespace 
 > 正确做法：英文串里**含** `·`、全角空格等非 ASCII 字符时，与中文一样包 `S8()`；纯 ASCII 的英文串保持裸 `juce::String`。
 > 要避免的是 `juce::String(const char*)` 按 ASCII 逐字节解码非 ASCII 字节（`·` 会显示成 `Â·`），而不是避免出现非 ASCII 字符。
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 ```bash
 powershell -NoProfile -Command "& 'E:\VST Effects Plugin Collection\moonvoc\build.bat'" 2>&1 | tail -20 && cd "E:/VST Effects Plugin Collection/moonvoc" && ./build/MoonVocHeadlessTest.exe | head -3
@@ -226,7 +226,7 @@ powershell -NoProfile -Command "& 'E:\VST Effects Plugin Collection\moonvoc\buil
 
 Expected: 编译通过，输出 `strings table filled: OK`，EXIT=0
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 cd "E:/VST Effects Plugin Collection/moonvoc" && git add Source/UI/MoonVocStrings.h test/HeadlessTest.cpp && git commit -F - <<'EOF'
@@ -266,7 +266,7 @@ EOF
     - `const std::vector<Block>& getBlocks() const`
   - 构造：`AboutOverlay()`，无参
 
-- [ ] **Step 1: 写失败的测试**
+- [x] **Step 1: 写失败的测试**
 
 在 `test/UiSnapshot.cpp` 的 include 区加：
 
@@ -335,7 +335,7 @@ static int checkAboutOverlay()
     }
 ```
 
-- [ ] **Step 2: 运行确认失败**
+- [x] **Step 2: 运行确认失败**
 
 ```bash
 powershell -NoProfile -Command "& 'E:\VST Effects Plugin Collection\moonvoc\build.bat'" 2>&1 | tail -20
@@ -343,7 +343,7 @@ powershell -NoProfile -Command "& 'E:\VST Effects Plugin Collection\moonvoc\buil
 
 Expected: **编译失败** —— `Cannot find source file: Source/UI/AboutOverlay.cpp` 或找不到 `AboutOverlay` 类型
 
-- [ ] **Step 3: 写 `Source/UI/AboutOverlay.h`**
+- [x] **Step 3: 写 `Source/UI/AboutOverlay.h`**
 
 ```cpp
 #pragma once
@@ -436,7 +436,7 @@ private:
 };
 ```
 
-- [ ] **Step 4: 写 `Source/UI/AboutOverlay.cpp`**
+- [x] **Step 4: 写 `Source/UI/AboutOverlay.cpp`**
 
 ```cpp
 #include "AboutOverlay.h"
@@ -728,7 +728,7 @@ bool AboutOverlay::keyPressed (const juce::KeyPress& k)
 ```
 
 
-- [ ] **Step 5: 把 `Source/UI/AboutOverlay.cpp` 加进 4 个 target**
+- [x] **Step 5: 把 `Source/UI/AboutOverlay.cpp` 加进 4 个 target**
 
 在 `CMakeLists.txt` 中每个 `Source/UI/MoonVocLookAndFeel.cpp` 后面加一行 `Source/UI/AboutOverlay.cpp`，共 4 处（`MoonVoc`、`MoonVocHeadlessTest`、`MoonVocRender`、`MoonVocUiSnapshot` 的源文件列表）。
 
@@ -738,7 +738,7 @@ bool AboutOverlay::keyPressed (const juce::KeyPress& k)
 cd "E:/VST Effects Plugin Collection/moonvoc" && grep -c "UI/AboutOverlay.cpp" CMakeLists.txt
 ```
 
-- [ ] **Step 6: 构建并运行自检**
+- [x] **Step 6: 构建并运行自检**
 
 ```bash
 powershell -NoProfile -Command "& 'E:\VST Effects Plugin Collection\moonvoc\build.bat'" 2>&1 | tail -20 && cd "E:/VST Effects Plugin Collection/moonvoc" && ./build/MoonVocUiSnapshot.exe | head -20
@@ -748,7 +748,7 @@ Expected: 编译通过；输出 `checkAboutOverlay: FAIL=0`；EXIT=0
 
 若出现 `about card inside canvas` 或 `height clamped` 的 FAIL：说明文字量高超出 656 上限，检查 `gaps[]` 与字号是否照抄（大字模式 ×1.4 后内容约 590，正常不会越界）。
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 cd "E:/VST Effects Plugin Collection/moonvoc" && git add Source/UI/AboutOverlay.h Source/UI/AboutOverlay.cpp CMakeLists.txt test/UiSnapshot.cpp && git commit -F - <<'EOF'
@@ -775,7 +775,7 @@ EOF
 - Consumes: `AboutOverlay` / `InfoBadge`（Task 3）
 - Produces: `void MoonVocEditor::openAbout (bool animate = true)` —— 公开方法，Task 5 的 ⓘ 按钮与 UiSnapshot 都用它
 
-- [ ] **Step 1: 写失败的测试**
+- [x] **Step 1: 写失败的测试**
 
 在 `test/UiSnapshot.cpp` 的 `main()` 内、现有 4 个 `shot(...)` 调用之后加：
 
@@ -808,7 +808,7 @@ EOF
 
 在 `checkAboutOverlay()` 里补一条断言（放在函数内 `AboutOverlay ov;` 那段之后不行 —— 用编辑器路径断言更直接，见下一步 `dumpLayout`）。
 
-- [ ] **Step 2: 运行确认失败**
+- [x] **Step 2: 运行确认失败**
 
 ```bash
 powershell -NoProfile -Command "& 'E:\VST Effects Plugin Collection\moonvoc\build.bat'" 2>&1 | tail -20
@@ -816,7 +816,7 @@ powershell -NoProfile -Command "& 'E:\VST Effects Plugin Collection\moonvoc\buil
 
 Expected: **编译失败** —— `no member named 'openAbout' in 'MoonVocEditor'`
 
-- [ ] **Step 3: 改 `Source/PluginEditor.h`**
+- [x] **Step 3: 改 `Source/PluginEditor.h`**
 
 在 include 区加（`#include "UI/MoonVocStrings.h"` 之后）：
 
@@ -842,7 +842,7 @@ Expected: **编译失败** —— `no member named 'openAbout' in 'MoonVocEditor
     InfoBadge    infoBadge;      // 全局卡右上角的 ⓘ 入口
 ```
 
-- [ ] **Step 4: 改 `Source/PluginEditor.cpp`**
+- [x] **Step 4: 改 `Source/PluginEditor.cpp`**
 
 （a）构造函数末尾（`startTimerHz (10);` 之前）加：
 
@@ -903,7 +903,7 @@ void MoonVocEditor::openAbout (bool animate)
     }
 ```
 
-- [ ] **Step 5: 构建并验证**
+- [x] **Step 5: 构建并验证**
 
 ```bash
 powershell -NoProfile -Command "& 'E:\VST Effects Plugin Collection\moonvoc\build.bat'" 2>&1 | tail -20 && cd "E:/VST Effects Plugin Collection/moonvoc" && ./build/MoonVocUiSnapshot.exe 2>&1 | grep -E "dumpLayout: FAIL|checkAboutOverlay|snapshot written"
@@ -911,7 +911,7 @@ powershell -NoProfile -Command "& 'E:\VST Effects Plugin Collection\moonvoc\buil
 
 Expected: **7 次** `dumpLayout: FAIL=0`（4 张旧截图 + 3 张关于，每个状态各调一次）、`checkAboutOverlay: FAIL=0`、7 张 `snapshot written`
 
-- [ ] **Step 6: 人工看图确认（关键）**
+- [x] **Step 6: 人工看图确认（关键）**
 
 打开 `ui_snapshot_about.png`、`ui_snapshot_about_en.png`、`ui_snapshot_about_large.png`，确认：
 
@@ -926,7 +926,7 @@ Expected: **7 次** `dumpLayout: FAIL=0`（4 张旧截图 + 3 张关于，每个
 cd "E:/VST Effects Plugin Collection/moonvoc" && start "" ui_snapshot_about.png
 ```
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 cd "E:/VST Effects Plugin Collection/moonvoc" && git add Source/PluginEditor.h Source/PluginEditor.cpp test/UiSnapshot.cpp && git commit -F - <<'EOF'
@@ -953,7 +953,7 @@ Task 4 已经把 ⓘ 摆好、把 `onClick` 接上、把浮层接进编辑器。
 - Consumes: `MoonVocEditor::getInfoBadge()` / `getAboutOverlay()` / `openAbout()`、`InfoBadge::onClick`、`AboutOverlay::isOpen()/close()/keyPressed()/shouldCloseOnClickAt()/getCardBounds()/getCloseBounds()`
 - Produces: `static int checkAboutInteraction (MoonVocProcessor&)` —— UiSnapshot 内的自检函数，返回 FAIL 计数
 
-- [ ] **Step 1: 写失败的测试**
+- [x] **Step 1: 写失败的测试**
 
 在 `test/UiSnapshot.cpp` 的 `checkAboutOverlay()` 之后加：
 
@@ -1008,7 +1008,7 @@ static int checkAboutInteraction (MoonVocProcessor& processor)
 }
 ```
 
-- [ ] **Step 2: 运行确认失败**
+- [x] **Step 2: 运行确认失败**
 
 ```bash
 powershell -NoProfile -Command "& 'E:\VST Effects Plugin Collection\moonvoc\build.bat'" 2>&1 | tail -20
@@ -1016,7 +1016,7 @@ powershell -NoProfile -Command "& 'E:\VST Effects Plugin Collection\moonvoc\buil
 
 Expected: **编译失败** —— `no member named 'getInfoBadge'` / `no member named 'shouldCloseOnClickAt'`（若 Task 3/4 未按计划提供这些接口）
 
-- [ ] **Step 3: 在 `main()` 里接上自检**
+- [x] **Step 3: 在 `main()` 里接上自检**
 
 在 `processor.prepareToPlay (48000.0, 512);` 之后加：
 
@@ -1028,7 +1028,7 @@ Expected: **编译失败** —— `no member named 'getInfoBadge'` / `no member 
     }
 ```
 
-- [ ] **Step 4: 运行确认通过**
+- [x] **Step 4: 运行确认通过**
 
 ```bash
 powershell -NoProfile -Command "& 'E:\VST Effects Plugin Collection\moonvoc\build.bat'" 2>&1 | tail -5 && cd "E:/VST Effects Plugin Collection/moonvoc" && ./build/MoonVocUiSnapshot.exe 2>&1 | grep -E "checkAbout|dumpLayout: FAIL"
@@ -1036,7 +1036,7 @@ powershell -NoProfile -Command "& 'E:\VST Effects Plugin Collection\moonvoc\buil
 
 Expected: `checkAboutInteraction: FAIL=0`、`checkAboutOverlay: FAIL=0`、7 次 `dumpLayout: FAIL=0`；EXIT=0
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 cd "E:/VST Effects Plugin Collection/moonvoc" && git add test/UiSnapshot.cpp && git commit -F - <<'EOF'
@@ -1060,7 +1060,7 @@ EOF
 - Consumes: 无
 - Produces: 无新接口；15 个旋钮的 `juce::Slider::getMouseDragSensitivity()` 恒为 500
 
-- [ ] **Step 1: 写失败的断言**
+- [x] **Step 1: 写失败的断言**
 
 在 `dumpLayout()` 末尾（Task 4 加的那段之后、`std::printf("dumpLayout: FAIL=%d\n", fail);` 之前）加：
 
@@ -1074,7 +1074,7 @@ EOF
         check (s->getMouseDragSensitivity() == 500, "knob drag sensitivity == 500");
 ```
 
-- [ ] **Step 2: 运行确认失败**
+- [x] **Step 2: 运行确认失败**
 
 ```bash
 powershell -NoProfile -Command "& 'E:\VST Effects Plugin Collection\moonvoc\build.bat'" 2>&1 | tail -5 && cd "E:/VST Effects Plugin Collection/moonvoc" && ./build/MoonVocUiSnapshot.exe 2>&1 | grep -c "FAIL: knob drag sensitivity"
@@ -1082,7 +1082,7 @@ powershell -NoProfile -Command "& 'E:\VST Effects Plugin Collection\moonvoc\buil
 
 Expected: 输出 `105` —— 15 个旋钮全部 FAIL，而 `dumpLayout()` 在 7 个截图状态里各调一次（15 × 7）
 
-- [ ] **Step 3: 实现**
+- [x] **Step 3: 实现**
 
 `setupSlider()`（`Source/PluginEditor.cpp:191`）在 `s.setDoubleClickReturnValue(true, s.getValue());` 之后加：
 
@@ -1092,7 +1092,7 @@ Expected: 输出 `105` —— 15 个旋钮全部 FAIL，而 `dumpLayout()` 在 7
     s.setMouseDragSensitivity (500);
 ```
 
-- [ ] **Step 4: 运行确认通过**
+- [x] **Step 4: 运行确认通过**
 
 ```bash
 powershell -NoProfile -Command "& 'E:\VST Effects Plugin Collection\moonvoc\build.bat'" 2>&1 | tail -5 && cd "E:/VST Effects Plugin Collection/moonvoc" && ./build/MoonVocUiSnapshot.exe 2>&1 | grep -E "dumpLayout: FAIL|knob drag"
@@ -1100,11 +1100,11 @@ powershell -NoProfile -Command "& 'E:\VST Effects Plugin Collection\moonvoc\buil
 
 Expected: 7 次 `dumpLayout: FAIL=0`，无 `knob drag` FAIL 行
 
-- [ ] **Step 5: 手感真机确认（人工步骤，执行代理做不了 —— 归到 Task 7 的交付验收）**
+- [x] **Step 5: 手感真机确认（人工步骤，执行代理做不了 —— 归到 Task 7 的交付验收）**
 
 打开 Standalone，拖动 Compression / Edge / Reverb 三个 hero 旋钮与任意标准旋钮：同样一段鼠标位移，数值变化约为改前的一半；微调时更容易停在想要的数字上。
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 cd "E:/VST Effects Plugin Collection/moonvoc" && git add Source/PluginEditor.cpp && git commit -F - <<'EOF'
@@ -1128,7 +1128,7 @@ EOF
 - Consumes: 前 6 个任务的全部产出
 - Produces: 无
 
-- [ ] **Step 1: 跑全量测试基线**
+- [x] **Step 1: 跑全量测试基线**
 
 ```bash
 cd "E:/VST Effects Plugin Collection/moonvoc" && ./build/MoonVocHeadlessTest.exe > /tmp/ht.log 2>&1; echo "headless EXIT=$?"; grep -c FAIL /tmp/ht.log; tail -3 /tmp/ht.log
@@ -1142,7 +1142,7 @@ cd "E:/VST Effects Plugin Collection/moonvoc" && ./build/MoonVocUiSnapshot.exe 2
 
 Expected: 只有 `dumpLayout: FAIL=0`（**7 次**）、`checkAboutOverlay: FAIL=0`、`checkAboutInteraction: FAIL=0`，没有任何 `FAIL:` 行
 
-- [ ] **Step 2: 更新 `docs/HANDOFF.md`**
+- [x] **Step 2: 更新 `docs/HANDOFF.md`**
 
 在 §6「已知问题 / 待办」的最新小节（v0.9.0 那条之后）插入新小节：
 
@@ -1166,7 +1166,7 @@ Expected: 只有 `dumpLayout: FAIL=0`（**7 次**）、`checkAboutOverlay: FAIL=
 - [ ] 待打包发布（等用户指示）
 ```
 
-- [ ] **Step 3: 把 spec 状态行改成已实现**
+- [x] **Step 3: 把 spec 状态行改成已实现**
 
 把 spec 第 3 行：
 
@@ -1182,7 +1182,7 @@ Expected: 只有 `dumpLayout: FAIL=0`（**7 次**）、`checkAboutOverlay: FAIL=
 
 同时把 spec §4 里「headless 测试新增断言：任一旋钮 `getMouseDragSensitivity() == 500`」改成「`dumpLayout()`（UiSnapshot）新增断言：15 个旋钮 `getMouseDragSensitivity() == 500`」—— 实际落在 UI 侧，因为 headless 测试不建编辑器。
 
-- [ ] **Step 4: 勾选计划进度并提交文档**
+- [x] **Step 4: 勾选计划进度并提交文档**
 
 把本文件里已完成步骤的 `- [ ]` 改成 `- [x]`，然后：
 

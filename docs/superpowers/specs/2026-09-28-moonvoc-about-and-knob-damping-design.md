@@ -1,6 +1,6 @@
 # MoonVoc 关于界面 + 旋钮阻尼 设计文档
 
-> **状态：待实现** —— 实现计划见 `docs/superpowers/plans/2026-09-28-moonvoc-about-and-knob-damping.md`，落地后补 `docs/HANDOFF.md`。
+> **状态：已实现（2026-09-28）** —— 实现计划见 `docs/superpowers/plans/2026-09-28-moonvoc-about-and-knob-damping.md`，落地记录见 `docs/HANDOFF.md` §6。
 > 2026-09-28 制定。基于用户 2 项需求 + 4 轮澄清（入口位置 / 内容块 / 阻尼强度 / 版式三选一，用户选定 B 版双栏）。
 > 版式与文案的可视化定稿：`.superpowers/brainstorm/1172-1790590644/content/about-b-proofread.html`（会话临时目录，已在 `.gitignore`）
 
@@ -123,7 +123,7 @@ s.setMouseDragSensitivity (500);   // 默认 250：拖满整个取值范围所�
 | 项 | 方式 |
 |---|---|
 | 布局 | `MoonVocUiSnapshot.exe` 新增断言：① ⓘ 按钮在全局卡内且与 `indicatorRect` 不重叠 ② 关于卡片四边在画布 `1496×672` 内 ③ 左栏与右栏不重叠 ④ 右栏各文字块两两不重叠 ⑤ 插画绘制区在左栏内 |
-| 阻尼 | headless 测试新增断言：任一旋钮 `getMouseDragSensitivity() == 500` |
+| 阻尼 | `dumpLayout()`（UiSnapshot）新增断言：15 个旋钮 `getMouseDragSensitivity() == 500`（实际落在 UI 侧 —— headless 测试不建编辑器） |
 | 回归 | `MoonVocHeadlessTest.exe` 全绿（应无变化 —— 本次不动 DSP、不动参数） |
 | 视觉 | 浮层打开状态渲染 PNG，人工确认（浏览器可视化会话标签页） |
 | 构建 | `powershell -NoProfile -Command "& 'E:\VST Effects Plugin Collection\moonvoc\build.bat'"` |

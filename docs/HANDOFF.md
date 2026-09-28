@@ -94,6 +94,36 @@ moonvoc/
 - [x] **Windows 打包踩坑**：`Compress-Archive` 和 .NET `ZipFile` 都不行（前者中文名 ANSI 编码、后者用反斜杠当路径分隔符）；`bsdtar` 路径对但中文名是 ANSI。**最终用 Python `zipfile`**（UTF-8 + flag），已验证 Windows 原生解压文件名正确
 - [ ] 等测试反馈
 
+**2026-09-28 关于界面 + 旋钮阻尼（v0.9.0 之上，未打包）**：
+- [x] **关于浮层**：`Source/UI/AboutOverlay.h/.cpp` —— 插件内浮层（非独立窗口，宿主里不会被挤掉），
+      作为 Canvas 子组件覆盖 1496×672，自动跟随 100~300% 缩放与大字模式
+- [x] **版式（用户选定 B 双栏）**：卡片 1080 宽，左栏 440 整幅插画（等比、垂直居中、不裁切），
+      右栏 564 文字（标题渐变 / 版本 / 介绍 / SIGNAL CHAIN / TRANSPARENCY / 联系版权）
+- [x] **卡片高度按文字实测自适应**（TextLayout 量高，钳制 360~656），中英 + 大字都不会溢出
+- [x] **入口**：全局卡右上角 ⓘ 徽章（1438,30,26,26），刻意避开右端指示灯（1412,66,40,40）
+- [x] **关闭**：点遮罩 / ✕ / Esc；**淡入 150ms**（`open(false)` 供截图跳过动画）
+- [x] **插画素材**：`assets/artwork.png`（与 TMIXTOOL 同一张，TUJZMIXING 自有）嵌入二进制数据；
+      `juce_add_binary_data` target 更名 `MoonVocFonts` → `MoonVocAssets`
+- [x] **旋钮阻尼**：`setupSlider` 统一 `setMouseDragSensitivity(500)`（默认 250 太滑），15 个旋钮全覆盖
+- [x] **JUCE 9 新坑**：① `AttributedString` 用 `append(text, font, colour)`，没有 `withFont`；
+      ② `setLineSpacing` 是**额外**行距不是倍数（倍数要换算 `font.getHeight() * (m-1)`）；
+      ③ 规则是「**非 ASCII 内容一律走 `S8()`**」—— 中文串，以及含 `·`／全角空格的英文串都得包 `S8()`，
+      **纯 ASCII** 的英文串才用裸 `juce::String`。要避免的是 `juce::String(const char*)` 按 ASCII
+      逐字节解码（`·` 显示成 `Â·`），**不是**「避免出现非 ASCII 字符」。据此，英文串里的 `−85`/`→`/`©`
+      换成了 `-85`/`->`/`(c)`，而 `·` 与全角空格照留（只是包上 `S8()`）
+- [x] **验证**：HeadlessTest EXIT=0（FAIL 计数 0、首行 `strings table filled: OK`）；
+      UiSnapshot `dumpLayout: FAIL=0` **×7**（4 张既有截图 + 3 张关于，每状态各调一次）+
+      `checkAboutOverlay: FAIL=0`（中英 × 标准/大字 4 组合）+ `checkAboutInteraction: FAIL=0`（开合回归），
+      全程无任何 `FAIL:` 行；3 张关于截图留待交付验收目视
+- [x] **两处已定档的偏差（勿踩）**：
+      ① **阻尼断言在 `dumpLayout()`（UiSnapshot 内），不在 headless 测试** —— headless 不创建编辑器，
+      拿不到 `juce::Slider`（spec §4 已同步订正为 dumpLayout）
+      ② **`checkAboutInteraction()` 必须放在所有截图之后**：它多建一次编辑器，会让 7 张参考 PNG 中的
+      3 张（standard / en / zoom200）出现 1~2 像素、≤2/255 的弧线抗锯齿级抖动。已实测「只建/毁编辑器」
+      即可复现，且参数取值、控件几何、Theme 字体标志两次运行完全一致、复位标志也消不掉 —— **根因未查明**。
+      放在最后，参考 PNG 才逐字节稳定
+- [ ] 待打包发布（等用户指示）
+
 **v0.8.0 已完成（2026-09-27）**：
 - [x] **压缩重做**：三级大师链（FET + 光电 + 并行）+ 侧链高通 120Hz（只作用于检测）+ 程序依赖释放；**保留并强化 crest 智能**（EMA 1s→300ms + 短时瞬态检测）；阈值改 pow(amount,0.4) 幂曲线
 - [x] **去齿音**：换 Airwindows DeBess 移植（不滤波、靠斜率连乘检测），链路位于**压缩后**，双旋钮 Amount/Focus + GR 表
