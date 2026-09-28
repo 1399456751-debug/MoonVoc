@@ -1080,7 +1080,7 @@ EOF
 powershell -NoProfile -Command "& 'E:\VST Effects Plugin Collection\moonvoc\build.bat'" 2>&1 | tail -5 && cd "E:/VST Effects Plugin Collection/moonvoc" && ./build/MoonVocUiSnapshot.exe 2>&1 | grep -c "FAIL: knob drag sensitivity"
 ```
 
-Expected: 输出 `15`（15 个旋钮全部 FAIL）
+Expected: 输出 `105` —— 15 个旋钮全部 FAIL，而 `dumpLayout()` 在 7 个截图状态里各调一次（15 × 7）
 
 - [ ] **Step 3: 实现**
 
@@ -1098,9 +1098,9 @@ Expected: 输出 `15`（15 个旋钮全部 FAIL）
 powershell -NoProfile -Command "& 'E:\VST Effects Plugin Collection\moonvoc\build.bat'" 2>&1 | tail -5 && cd "E:/VST Effects Plugin Collection/moonvoc" && ./build/MoonVocUiSnapshot.exe 2>&1 | grep -E "dumpLayout: FAIL|knob drag"
 ```
 
-Expected: 4 次 `dumpLayout: FAIL=0`，无 `knob drag` FAIL 行
+Expected: 7 次 `dumpLayout: FAIL=0`，无 `knob drag` FAIL 行
 
-- [ ] **Step 5: 手感真机确认**
+- [ ] **Step 5: 手感真机确认（人工步骤，执行代理做不了 —— 归到 Task 7 的交付验收）**
 
 打开 Standalone，拖动 Compression / Edge / Reverb 三个 hero 旋钮与任意标准旋钮：同样一段鼠标位移，数值变化约为改前的一半；微调时更容易停在想要的数字上。
 
