@@ -909,7 +909,7 @@ void MoonVocEditor::openAbout (bool animate)
 powershell -NoProfile -Command "& 'E:\VST Effects Plugin Collection\moonvoc\build.bat'" 2>&1 | tail -20 && cd "E:/VST Effects Plugin Collection/moonvoc" && ./build/MoonVocUiSnapshot.exe 2>&1 | grep -E "dumpLayout: FAIL|checkAboutOverlay|snapshot written"
 ```
 
-Expected: 4 次 `dumpLayout: FAIL=0`、`checkAboutOverlay: FAIL=0`、7 张 `snapshot written`（4 张旧 + 3 张关于）
+Expected: **7 次** `dumpLayout: FAIL=0`（4 张旧截图 + 3 张关于，每个状态各调一次）、`checkAboutOverlay: FAIL=0`、7 张 `snapshot written`
 
 - [ ] **Step 6: 人工看图确认（关键）**
 
@@ -1034,7 +1034,7 @@ Expected: **编译失败** —— `no member named 'getInfoBadge'` / `no member 
 powershell -NoProfile -Command "& 'E:\VST Effects Plugin Collection\moonvoc\build.bat'" 2>&1 | tail -5 && cd "E:/VST Effects Plugin Collection/moonvoc" && ./build/MoonVocUiSnapshot.exe 2>&1 | grep -E "checkAbout|dumpLayout: FAIL"
 ```
 
-Expected: `checkAboutInteraction: FAIL=0`、`checkAboutOverlay: FAIL=0`、4 次 `dumpLayout: FAIL=0`；EXIT=0
+Expected: `checkAboutInteraction: FAIL=0`、`checkAboutOverlay: FAIL=0`、7 次 `dumpLayout: FAIL=0`；EXIT=0
 
 - [ ] **Step 5: Commit**
 
