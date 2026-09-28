@@ -721,7 +721,6 @@ bool AboutOverlay::keyPressed (const juce::KeyPress& k)
 }
 ```
 
-> **写代码时删掉 `recomputeMetrics()` 里那三行 `offset` 残渣**（`const auto offset = ...`、`juce::ignoreUnused (offset);`）—— 那是编辑过程中的临时变量，不属于最终代码。
 
 - [ ] **Step 5: 把 `Source/UI/AboutOverlay.cpp` 加进 4 个 target**
 
