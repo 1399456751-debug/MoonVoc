@@ -2,6 +2,7 @@
 #include <JuceHeader.h>
 #include "../Source/PluginProcessor.h"
 #include "../Source/PluginEditor.h"
+#include "../Source/UI/AboutOverlay.h"
 
 static void writePng(const juce::Image& img, const juce::String& fileName)
 {
@@ -20,9 +21,62 @@ static void writePng(const juce::Image& img, const juce::String& fileName)
     }
 }
 
+// 浮层版面自检：卡片必须落在画布内、高度被钳制、两栏与文字块不重叠
+static int checkAboutOverlay()
+{
+    int fail = 0;
+    auto check = [&] (bool ok, const char* what)
+    {
+        if (! ok) { std::printf("FAIL: %s\n", what); ++fail; }
+    };
+
+    const juce::Rectangle<int> canvas (0, 0, MoonVocEditor::kDesignW, MoonVocEditor::kDesignH);
+
+    AboutOverlay ov;
+    ov.setBounds (canvas);
+
+    for (const bool zh : { true, false })      // 中英两套文案都要放得下
+        for (const bool large : { false, true }) // 大字模式字号 ×1.4
+        {
+            Theme::useCjkFont   = zh;
+            Theme::largeFontMode = large;
+            ov.setLanguage (zh);
+
+            const auto card = ov.getCardBounds();
+            check (canvas.contains (card), "about card inside canvas");
+            check (card.getHeight() >= 360 && card.getHeight() <= 656, "about card height clamped");
+            check (card.getWidth() == 1080, "about card width 1080");
+            check (ov.getImageBounds().getHeight() <= card.getHeight(), "artwork fits card height");
+            check (ov.getRightColumnBounds().getX() >= ov.getImageBounds().getRight(),
+                   "about columns disjoint");
+
+            const auto& blocks = ov.getBlocks();
+            for (size_t i = 0; i < blocks.size(); ++i)
+                for (size_t j = i + 1; j < blocks.size(); ++j)
+                    check (! blocks[i].bounds.intersects (blocks[j].bounds),
+                           "about text blocks disjoint");
+
+            // 点击归属：卡片内部不关、✕ 关、遮罩关（中英/大字下坐标都会变，四种组合全覆盖）
+            check (! ov.shouldCloseOnClickAt (card.getCentre()), "card interior click keeps overlay open");
+            check (ov.shouldCloseOnClickAt (ov.getCloseBounds().getCentre()), "close button click closes");
+            check (ov.shouldCloseOnClickAt ({ 4, 4 }), "backdrop click closes");
+        }
+
+    Theme::largeFontMode = false;
+    Theme::useCjkFont = true;
+    std::printf ("checkAboutOverlay: FAIL=%d\n", fail);
+    return fail;
+}
+
 int main()
 {
     juce::ScopedJuceInitialiser_GUI guiInit;
+
+    if (checkAboutOverlay() != 0)
+    {
+        std::printf("about overlay check failed\n");
+        return 1;
+    }
 
     MoonVocProcessor processor;
     processor.prepareToPlay(48000.0, 512);

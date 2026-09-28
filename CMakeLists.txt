@@ -42,6 +42,7 @@ target_sources(MoonVoc PRIVATE
     Source/PluginProcessor.cpp
     Source/PluginEditor.cpp
     Source/UI/MoonVocLookAndFeel.cpp
+    Source/UI/AboutOverlay.cpp
     Source/dsp/VoiceReverb.cpp
     Source/dsp/VoiceEq.cpp
     Source/dsp/VoiceComp.cpp
@@ -73,6 +74,7 @@ add_executable(MoonVocHeadlessTest
     Source/PluginProcessor.cpp
     Source/PluginEditor.cpp
     Source/UI/MoonVocLookAndFeel.cpp
+    Source/UI/AboutOverlay.cpp
     Source/dsp/VoiceReverb.cpp
     Source/dsp/VoiceEq.cpp
     Source/dsp/VoiceComp.cpp
@@ -108,6 +110,7 @@ add_executable(MoonVocRender
     Source/PluginProcessor.cpp
     Source/PluginEditor.cpp
     Source/UI/MoonVocLookAndFeel.cpp
+    Source/UI/AboutOverlay.cpp
     Source/dsp/VoiceReverb.cpp
     Source/dsp/VoiceEq.cpp
     Source/dsp/VoiceComp.cpp
@@ -143,6 +146,7 @@ add_executable(MoonVocUiSnapshot
     Source/PluginProcessor.cpp
     Source/PluginEditor.cpp
     Source/UI/MoonVocLookAndFeel.cpp
+    Source/UI/AboutOverlay.cpp
     Source/dsp/VoiceReverb.cpp
     Source/dsp/VoiceEq.cpp
     Source/dsp/VoiceComp.cpp
