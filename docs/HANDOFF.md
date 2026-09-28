@@ -1,6 +1,6 @@
-# MoonVoc 交接文档（v0.9.0）
+# MoonVoc 交接文档（v1.0.0 Totality）
 
-> 给下一个会话/模型：读完这份文档即可无缝接手。最后更新：2026-09-27（v0.9.0 测试版已打包发布：Win + mac 含 AU）
+> 给下一个会话/模型：读完这份文档即可无缝接手。最后更新：2026-09-29（v1.0.0「Totality」已打包发布：Win + mac 含 AU，包在桌面）
 
 ## 0. 一句话总结
 
@@ -141,7 +141,25 @@ moonvoc/
         现在这个保证只活在任务报告里，是口头约定而非回归信号
       · 若要根治下面那条未查明的像素抖动：首选「截图与自检拆成两个入口」（默认只出图、自检走独立入口），
         顺序约束就从约定变成物理不可能
-- [ ] 待打包发布（等用户指示）
+- [x] **已打包发布（2026-09-29）**，见下条
+
+**2026-09-29 v1.0.0「Totality」发布（Win + mac 含 AU）**：
+- [x] **版本号 0.9.0 → 1.0.0**：`CMakeLists.txt` 4 处（`project VERSION` + 3 个测试 target 的
+      `VersionString` / `VersionCode 0x10000`）；**关于界面版本行加了发布代号 `TOTALITY`**
+      （`AboutOverlay.cpp` 里一个常量，中英一致，不进 Strings 表）
+- [x] **Windows 包**：`C:\Users\Administrator\Desktop\MoonVoc_1.0_Totality_Win64.zip`（5.9MB，
+      VST3 + Standalone + 中文《使用说明.txt》）——zip 用 Python `zipfile` 写入，
+      中文条目 UTF-8 标志位已回读验证为 `True`
+- [x] **mac 包**：`C:\Users\Administrator\Desktop\MoonVoc_1.0_Totality_mac.zip`（17.4MB，
+      **AU + VST3 + Standalone** + README_Mac.txt）——CI run `36462244449`，**auval 通过**；
+      三个 bundle 已验为 fat 二进制（arm64 + x86_64 均在）
+- [x] **README_Mac.txt 更新到 1.0**（顺带修正两处从 0.8.0 起就过时的速查：压缩风格、混响模式名）
+- [x] 已 push GitHub main（`fb93471..cd323c2`）
+- [x] 发布前回归：HeadlessTest EXIT=0、UiSnapshot 7×`dumpLayout: FAIL=0` + 两个 check `FAIL=0`
+- [ ] 等朋友测试反馈
+- **打包踩坑复述**（本次全程走通，勿再试错）：Windows zip 必须用 Python `zipfile`
+      （`Compress-Archive`/`.NET ZipFile`/`bsdtar` 都会毁掉中文名）；mac zip **不能**在 Windows 上重打
+      （会丢 +x 执行位）——说明文档必须由 mac runner 用 `ditto` 一起打包，所以 README 要先入仓再跑 CI
 
 **v0.8.0 已完成（2026-09-27）**：
 - [x] **压缩重做**：三级大师链（FET + 光电 + 并行）+ 侧链高通 120Hz（只作用于检测）+ 程序依赖释放；**保留并强化 crest 智能**（EMA 1s→300ms + 短时瞬态检测）；阈值改 pow(amount,0.4) 幂曲线
